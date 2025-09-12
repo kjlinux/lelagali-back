@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('restaurateur_moyens_paiement', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignId('restaurateur_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('moyen_paiement_id')->constrained()->onDelete('cascade');
+            $table->foreignUuid('restaurateur_id')->constrained('users')->onDelete('cascade');
+            $table->foreignUuid('moyen_paiement_id')->constrained()->onDelete('cascade');
             $table->string('numero_compte')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();

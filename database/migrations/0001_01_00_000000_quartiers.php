@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('code')->unique();
             $table->text('description')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
-            $table->unsignedBigInteger('created_by')->nullable(); // provisoire
+            // $table->unsignedBigInteger('created_by')->nullable(); // provisoire
             $table->timestamps();
             $table->softDeletes();
         });

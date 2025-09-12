@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('commande_items', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignId('commande_id')->constrained()->onDelete('cascade');
-            $table->foreignId('plat_id')->constrained()->onDelete('cascade');
+            $table->foreignUuid('commande_id')->constrained()->onDelete('cascade');
+            $table->foreignUuid('plat_id')->constrained()->onDelete('cascade');
             $table->integer('quantite');
             $table->decimal('prix_unitaire', 10, 0);
             $table->decimal('prix_total', 10, 0);

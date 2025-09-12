@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('notification_commandes', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignId('commande_id')->constrained()->onDelete('cascade');
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignUuid('commande_id')->constrained()->onDelete('cascade');
+            $table->foreignUuid('user_id')->constrained()->onDelete('cascade');
             $table->string('type');
             $table->string('titre');
             $table->text('message');

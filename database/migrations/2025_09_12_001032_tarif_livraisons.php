@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('tarif_livraisons', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignId('restaurateur_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('quartier_id')->constrained()->onDelete('cascade');
+            $table->foreignUuid('restaurateur_id')->constrained('users')->onDelete('cascade');
+            $table->foreignUuid('quartier_id')->constrained()->onDelete('cascade');
             $table->decimal('prix', 10, 0);
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();

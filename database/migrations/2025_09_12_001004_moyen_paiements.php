@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->string('icon')->nullable();
-            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
+            $table->foreignUuid('created_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();
             $table->softDeletes();
         });

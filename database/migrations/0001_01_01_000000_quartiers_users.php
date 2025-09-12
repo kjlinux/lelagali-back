@@ -14,13 +14,15 @@ return new class extends Migration
         Schema::table('quartiers', function (Blueprint $table) {
             $table->foreignUuid('created_by')
                 ->references('id')->on('users')
-                ->onDelete('cascade');
+                ->onDelete('cascade')
+                ->after('status');
         });
 
         Schema::table('users', function (Blueprint $table) {
             $table->foreignUuid('quartier_id')
                 ->references('id')->on('quartiers')
-                ->onDelete('set null');
+                ->onDelete('set null')
+                ->after('remember_token');
         });
     }
 

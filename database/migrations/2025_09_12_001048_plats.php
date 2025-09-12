@@ -19,16 +19,15 @@ return new class extends Migration
             $table->integer('quantite_disponible')->default(0);
             $table->integer('quantite_vendue')->default(0);
             $table->string('image')->nullable();
-            $table->foreignId('categorie_id')->constrained('categorie_plats')->onDelete('cascade');
-            $table->foreignId('restaurateur_id')->constrained('users')->onDelete('cascade');
+            $table->foreignUuid('categorie_id')->constrained('categorie_plats')->onDelete('cascade');
+            $table->foreignUuid('restaurateur_id')->constrained('users')->onDelete('cascade');
             $table->date('date_disponibilite'); // Uniquement lendemain
             $table->enum('status', ['active', 'inactive', 'expired'])->default('active');
             $table->boolean('is_approved')->default(true);
-            $table->foreignId('approved_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->foreignUuid('approved_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamp('approved_at')->nullable();
             $table->integer('temps_preparation')->nullable(); // minutes
             $table->timestamps();
-            $table->softDeletes();
             $table->index(['date_disponibilite', 'status', 'is_approved']);
             $table->softDeletes();
         });
