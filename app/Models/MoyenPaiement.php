@@ -9,14 +9,7 @@ class MoyenPaiement extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = [
-        'nom',
-        'code',
-        'description',
-        'status',
-        'icon',
-        'created_by',
-    ];
+    protected $guarded = ['id'];
 
     public function restaurateurs()
     {

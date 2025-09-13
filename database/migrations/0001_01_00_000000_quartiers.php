@@ -14,10 +14,6 @@ return new class extends Migration
         Schema::create('quartiers', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('nom');
-            $table->string('code')->unique();
-            $table->text('description')->nullable();
-            $table->enum('status', ['active', 'inactive'])->default('active');
-            // $table->unsignedBigInteger('created_by')->nullable(); // provisoire
             $table->timestamps();
             $table->softDeletes();
         });

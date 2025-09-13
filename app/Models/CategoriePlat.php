@@ -9,13 +9,7 @@ class CategoriePlat extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = [
-        'nom',
-        'description',
-        'icon',
-        'status',
-        'created_by',
-    ];
+    protected $guarded = ['id'];
 
     public function plats()
     {

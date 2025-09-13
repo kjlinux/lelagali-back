@@ -11,16 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('categorie_plats', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->string('nom');
-            $table->text('description')->nullable();
-            $table->string('icon')->nullable();
-            $table->enum('status', ['active', 'inactive'])->default('active');
-            $table->foreignUuid('created_by')->constrained('users')->onDelete('cascade');
-            $table->timestamps();
-            $table->softDeletes();
-        });
+        // Schema::create('categorie_plats', function (Blueprint $table) {
+        //     $table->uuid('id')->primary();
+        //     $table->string('nom');
+        //     $table->text('description')->nullable();
+        //     $table->string('icon')->nullable();
+        //     $table->enum('status', ['active', 'inactive'])->default('active');
+        //     $table->foreignUuid('created_by')->constrained('users')->onDelete('cascade');
+        //     $table->timestamps();
+        //     $table->softDeletes();
+        // });
     }
 
     /**

@@ -9,13 +9,7 @@ class Quartier extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = [
-        'nom',
-        'code',
-        'description',
-        'status',
-        'created_by',
-    ];
+    protected $guarded = ['id'];
 
     public function users()
     {

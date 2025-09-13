@@ -9,14 +9,7 @@ class CommandeItem extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = [
-        'commande_id',
-        'plat_id',
-        'quantite',
-        'prix_unitaire',
-        'prix_total',
-        'notes',
-    ];
+    protected $guarded = ['id'];
 
     protected $casts = [
         'prix_unitaire' => 'decimal:0',

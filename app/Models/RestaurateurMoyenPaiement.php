@@ -10,13 +10,8 @@ class RestaurateurMoyenPaiement extends Model
     use SoftDeletes;
 
     protected $table = 'restaurateur_moyens_paiement';
-    
-    protected $fillable = [
-        'restaurateur_id',
-        'moyen_paiement_id',
-        'numero_compte',
-        'status',
-    ];
+
+    protected $guarded = ['id'];
 
     public function restaurateur()
     {

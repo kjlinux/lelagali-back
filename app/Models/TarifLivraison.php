@@ -9,12 +9,7 @@ class TarifLivraison extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = [
-        'restaurateur_id',
-        'quartier_id',
-        'prix',
-        'status',
-    ];
+    protected $guarded = ['id'];
 
     protected $casts = [
         'prix' => 'decimal:0',

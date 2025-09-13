@@ -9,28 +9,7 @@ class Commande extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = [
-        'numero_commande',
-        'client_id',
-        'restaurateur_id',
-        'total_plats',
-        'frais_livraison',
-        'total_general',
-        'type_commande',
-        'type_service',
-        'adresse_livraison',
-        'quartier_livraison_id',
-        'moyen_paiement_id',
-        'status', // 'en_attente', 'confirmee', 'en_preparation', 'prete', 'en_livraison', 'livree', 'annulee'
-        'status_paiement',
-        'date_commande',
-        'heure_souhaitee',
-        'notes_client',
-        'notes_restaurateur',
-        'temps_preparation_estime',
-        'heure_prete',
-        'heure_livraison',
-    ];
+    protected $guarded = ['id'];
 
     protected $casts = [
         'total_plats' => 'decimal:0',
@@ -76,7 +55,7 @@ class Commande extends Model
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($model) {
             $model->numero_commande = 'CMD-' . now()->format('YmdHis') . '-' . strtoupper(substr(uniqid(), -4));
         });

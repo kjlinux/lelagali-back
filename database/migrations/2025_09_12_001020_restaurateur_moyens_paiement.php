@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignUuid('restaurateur_id')->constrained('users')->onDelete('cascade');
             $table->foreignUuid('moyen_paiement_id')->constrained()->onDelete('cascade');
             $table->string('numero_compte')->nullable();
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            // $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
             $table->softDeletes();
         });

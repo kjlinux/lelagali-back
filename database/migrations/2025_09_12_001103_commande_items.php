@@ -16,9 +16,9 @@ return new class extends Migration
             $table->foreignUuid('commande_id')->constrained()->onDelete('cascade');
             $table->foreignUuid('plat_id')->constrained()->onDelete('cascade');
             $table->integer('quantite');
-            $table->decimal('prix_unitaire', 10, 0);
-            $table->decimal('prix_total', 10, 0);
-            $table->text('notes')->nullable();
+            $table->integer('prix_unitaire');
+            $table->integer('prix_total');
+            // $table->text('notes')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

@@ -9,15 +9,7 @@ class NotificationCommande extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = [
-        'commande_id',
-        'user_id', // destinataire
-        'type', // 'nouvelle_commande', 'status_change', 'paiement_confirme', etc.
-        'titre',
-        'message',
-        'is_read',
-        'sent_at',
-    ];
+    protected $guarded = ['id'];
 
     protected $casts = [
         'is_read' => 'boolean',
@@ -34,4 +26,3 @@ class NotificationCommande extends Model
         return $this->belongsTo(User::class);
     }
 }
-

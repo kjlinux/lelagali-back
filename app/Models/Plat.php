@@ -9,22 +9,7 @@ class Plat extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = [
-        'nom',
-        'description',
-        'prix',
-        'quantite_disponible',
-        'quantite_vendue',
-        'image',
-        'categorie_id',
-        'restaurateur_id',
-        'date_disponibilite',
-        'status',
-        'is_approved',
-        'approved_by',
-        'approved_at',
-        'temps_preparation',
-    ];
+    protected $guarded = ['id'];
 
     protected $casts = [
         'prix' => 'decimal:0',
@@ -63,7 +48,7 @@ class Plat extends Model
     public function scopeAvailable($query)
     {
         return $query->where('status', 'active')
-                    ->where('is_approved', true)
-                    ->where('quantite_disponible', '>', 0);
+            ->where('is_approved', true)
+            ->where('quantite_disponible', '>', 0);
     }
 }

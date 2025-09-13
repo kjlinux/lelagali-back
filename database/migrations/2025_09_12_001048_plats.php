@@ -15,14 +15,14 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('nom');
             $table->text('description');
-            $table->decimal('prix', 10, 0);
+            $table->integer('prix');
             $table->integer('quantite_disponible')->default(0);
             $table->integer('quantite_vendue')->default(0);
             $table->string('image')->nullable();
-            $table->foreignUuid('categorie_id')->constrained('categorie_plats')->onDelete('cascade');
+            // $table->foreignUuid('categorie_id')->constrained('categorie_plats')->onDelete('cascade');
             $table->foreignUuid('restaurateur_id')->constrained('users')->onDelete('cascade');
             $table->date('date_disponibilite'); // Uniquement lendemain
-            $table->enum('status', ['active', 'inactive', 'expired'])->default('active');
+            // $table->enum('status', ['active', 'inactive', 'expired'])->default('active');
             $table->boolean('is_approved')->default(true);
             $table->foreignUuid('approved_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamp('approved_at')->nullable();
