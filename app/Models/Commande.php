@@ -11,16 +11,6 @@ class Commande extends Model
 
     protected $guarded = ['id'];
 
-    protected $casts = [
-        'total_plats' => 'decimal:0',
-        'frais_livraison' => 'decimal:0',
-        'total_general' => 'decimal:0',
-        'date_commande' => 'datetime',
-        'heure_souhaitee' => 'datetime',
-        'heure_prete' => 'datetime',
-        'heure_livraison' => 'datetime',
-    ];
-
     public function client()
     {
         return $this->belongsTo(User::class, 'client_id');
