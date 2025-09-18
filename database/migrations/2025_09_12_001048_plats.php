@@ -28,7 +28,7 @@ return new class extends Migration
             $table->timestamp('approved_at')->nullable();
             $table->integer('temps_preparation')->nullable(); // minutes
             $table->timestamps();
-            $table->index(['date_disponibilite', 'status', 'is_approved']);
+            $table->index(['date_disponibilite', 'is_approved']);
             $table->softDeletes();
         });
     }
