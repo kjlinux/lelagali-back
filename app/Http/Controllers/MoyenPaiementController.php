@@ -37,6 +37,7 @@ class MoyenPaiementController extends Controller
 
         try {
             $input = $request->validated();
+            $input['created_by'] = auth()->user()->id ?? null;
             $moyenPaiement = MoyenPaiement::create($input);
 
             DB::commit();

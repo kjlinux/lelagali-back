@@ -37,6 +37,7 @@ class QuartierController extends Controller
 
         try {
             $input = $request->validated();
+            $input['created_by'] = auth()->user()->id ?? null;
             $quartier = Quartier::create($input);
 
             DB::commit();

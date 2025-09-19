@@ -16,7 +16,6 @@ class MoyenPaiementRequest extends FormRequest
         $rules = [
             'nom' => 'required|string|max:255',
             'icon' => 'nullable|string|max:255',
-            'created_by' => 'required|uuid|exists:users,id',
         ];
 
         // Règles spécifiques pour la mise à jour

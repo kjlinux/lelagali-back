@@ -18,9 +18,22 @@ use App\Mail\UserCredentialsUpdateMail;
 
 class UserController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $users = User::all();
+        $query = User::with(['quartier']);
+
+        // Filtrer par rôle si spécifié
+        if ($request->has('role')) {
+            $query->where('role', $request->role);
+
+            // Si le rôle est restaurateur, on charge aussi le nombre de commandes
+            if ($request->role === 'restaurateur' || $request->role === 'client') {
+                $query->withCount('commandes');
+            }
+        }
+
+        $users = $query->get();
+
         return response()->json([
             'status' => 'success',
             'code' => 200,
@@ -44,9 +57,10 @@ class UserController extends Controller
                 'profile_image' => 'nullable|string',
             ]);
 
+            // Générer un mot de passe de 12 caractères si non fourni
             $password = $request->has('password') && !empty($request->password)
                 ? $request->password
-                : Str::random(8);
+                : $this->generateSecurePassword(12);
 
             $user = User::create([
                 'name' => $request->name,
@@ -60,9 +74,12 @@ class UserController extends Controller
                 'active' => true,
             ]);
 
+            // Charger les relations
+            $user->load(['quartier']);
+
             DB::commit();
 
-
+            // Envoyer l'email si une adresse email est fournie
             if ($user->email) {
                 Mail::to($user->email)->send(new UserRegistrationMail($user, $password));
             }
@@ -110,15 +127,21 @@ class UserController extends Controller
             if ($request->has('profile_image')) $user->profile_image = $request->profile_image;
             if ($request->has('active')) $user->active = $request->active;
 
+            $passToEmail = null;
             if ($request->has('password') && !empty($request->password)) {
                 $user->password = Hash::make($request->password);
                 $passToEmail = $request->password;
             }
 
             $user->save();
+
+            // Charger les relations
+            $user->load(['quartier']);
+
             DB::commit();
 
-            if (isset($passToEmail)) {
+            // Envoyer l'email si le mot de passe a été modifié
+            if ($passToEmail && $user->email) {
                 Mail::to($user->email)->send(new UserCredentialsUpdateMail($user, $passToEmail));
             }
 
@@ -159,7 +182,6 @@ class UserController extends Controller
 
             $data = $request->validate($rules);
 
-
             $user->username = $data['username'];
             $user->email    = $data['email'];
             $user->name     = $data['name'];
@@ -180,7 +202,6 @@ class UserController extends Controller
 
             $user->save();
             DB::commit();
-
 
             if ($passToEmail) {
                 Mail::to($user->email)->send(new UserCredentialsUpdateMail($user, $passToEmail));
@@ -210,7 +231,7 @@ class UserController extends Controller
 
             $newPassword = $request->has('password') && !empty($request->password)
                 ? $request->password
-                : Str::random(8);
+                : $this->generateSecurePassword(12);
 
             $user->password = Hash::make($newPassword);
             $user->save();
@@ -265,7 +286,7 @@ class UserController extends Controller
         return response()->json([
             'status' => 'success',
             'code' => 200,
-            'data' => Auth::user()
+            'data' => Auth::user()->load(['quartier'])
         ]);
     }
 
@@ -275,7 +296,7 @@ class UserController extends Controller
             'status' => 'success',
             'code' => 200,
             'message' => 'Détails de l\'utilisateur récupérés avec succès',
-            'data' => $user
+            'data' => $user->load(['quartier'])
         ]);
     }
 
@@ -309,7 +330,6 @@ class UserController extends Controller
             ], 500);
         }
     }
-
 
     public function refresh(): JsonResponse
     {
@@ -385,6 +405,25 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Génère un mot de passe sécurisé
+     *
+     * @param int $length
+     * @return string
+     */
+    private function generateSecurePassword(int $length = 12): string
+    {
+        $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*';
+        $password = '';
+        $charactersLength = strlen($characters);
+
+        for ($i = 0; $i < $length; $i++) {
+            $password .= $characters[random_int(0, $charactersLength - 1)];
+        }
+
+        return $password;
+    }
+
     protected function respondWithToken(string $token): JsonResponse
     {
         return response()->json([
@@ -393,7 +432,7 @@ class UserController extends Controller
             'access_token' => $token,
             'token_type' => 'bearer',
             'expires_in' => Auth::factory()->getTTL() * 60,
-            'profile' => Auth::user()
+            'profile' => Auth::user()->load(['quartier'])
         ]);
     }
 }
