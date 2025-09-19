@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Plat extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, HasUuids;
 
     protected $guarded = ['id'];
 
@@ -21,11 +22,6 @@ class Plat extends Model
     public function restaurateur()
     {
         return $this->belongsTo(User::class, 'restaurateur_id');
-    }
-
-    public function categorie()
-    {
-        return $this->belongsTo(CategoriePlat::class, 'categorie_id');
     }
 
     public function commandeItems()
