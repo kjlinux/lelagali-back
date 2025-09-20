@@ -23,8 +23,12 @@ class MoyenPaiementSeeder extends Seeder
                 'icon' => 'orange-money.png'
             ],
             [
-                'nom' => 'MTN Mobile Money',
-                'icon' => 'mtn-momo.png'
+                'nom' => 'Telecel Money',
+                'icon' => 'telecel-money.png'
+            ],
+            [
+                'nom' => 'Sank Money',
+                'icon' => 'sank-money.png'
             ],
             [
                 'nom' => 'Moov Money',
@@ -38,10 +42,10 @@ class MoyenPaiementSeeder extends Seeder
                 'nom' => 'Espèces',
                 'icon' => 'cash.png'
             ],
-            [
-                'nom' => 'Carte Bancaire',
-                'icon' => 'credit-card.png'
-            ]
+            // [
+            //     'nom' => 'Carte Bancaire',
+            //     'icon' => 'credit-card.png'
+            // ]
         ];
 
         foreach ($moyensPaiement as $moyen) {

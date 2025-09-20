@@ -12,6 +12,14 @@ class Commande extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'status_paiement' => 'boolean',
+        'temps_preparation_estime' => 'integer',
+        'total_plats' => 'integer',
+        'frais_livraison' => 'integer',
+        'total_general' => 'integer'
+    ];
+
     public function client()
     {
         return $this->belongsTo(User::class, 'client_id');

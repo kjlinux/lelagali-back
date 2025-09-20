@@ -48,6 +48,46 @@ class UserSeeder extends Seeder
             ->where('id', $quartierId)
             ->update(['created_by' => $adminId]);
 
+        // Clients
+        for ($i = 1; $i <= 5; $i++) {
+            DB::table('users')->insert([
+                'id' => Str::uuid(),
+                'name' => "Client $i",
+                'email' => "client{$i}_test@app.com",
+                'phone' => "010100" . str_pad($i, 4, '0', STR_PAD_LEFT),
+                'email_verified_at' => now(),
+                'password' => Hash::make('password'),
+                'role' => 'client',
+                'active' => true,
+                'profile_image' => null,
+                'address' => "Adresse client $i",
+                'quartier_id' => $quartierId,
+                'remember_token' => Str::random(10),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Restaurateurs
+        for ($i = 1; $i <= 4; $i++) {
+            DB::table('users')->insert([
+                'id' => Str::uuid(),
+                'name' => "Restaurateur $i",
+                'email' => "resto$i@app.com",
+                'phone' => "020000" . str_pad($i, 4, '0', STR_PAD_LEFT),
+                'email_verified_at' => now(),
+                'password' => Hash::make('password'),
+                'role' => 'restaurateur',
+                'active' => true,
+                'profile_image' => null,
+                'address' => "Adresse restaurant $i",
+                'quartier_id' => $quartierId,
+                'remember_token' => Str::random(10),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
         // On attend que les quartiers soient créés
         $quartiers = DB::table('quartiers')->pluck('id')->toArray();
 
@@ -55,8 +95,8 @@ class UserSeeder extends Seeder
         DB::table('users')->insert([
             'id' => Str::uuid(),
             'name' => 'Client One',
-            'email' => 'client1@app.com',
-            'phone' => '0100000002',
+            'email' => 'client_one@app.com',
+            'phone' => '0102000001',
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'role' => 'client',
@@ -71,8 +111,8 @@ class UserSeeder extends Seeder
         DB::table('users')->insert([
             'id' => Str::uuid(),
             'name' => 'Client Two',
-            'email' => 'client2@app.com',
-            'phone' => '0100000003',
+            'email' => 'client_two@app.com',
+            'phone' => '0102000002',
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'role' => 'client',
@@ -89,8 +129,8 @@ class UserSeeder extends Seeder
         DB::table('users')->insert([
             'id' => Str::uuid(),
             'name' => 'Restaurateur One',
-            'email' => 'resto1@app.com',
-            'phone' => '0100000004',
+            'email' => 'resto_one@app.com',
+            'phone' => '0103000001',
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'role' => 'restaurateur',
@@ -105,8 +145,8 @@ class UserSeeder extends Seeder
         DB::table('users')->insert([
             'id' => Str::uuid(),
             'name' => 'Restaurateur Two',
-            'email' => 'resto2@app.com',
-            'phone' => '0100000005',
+            'email' => 'resto_two@app.com',
+            'phone' => '0103000002',
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'role' => 'restaurateur',
