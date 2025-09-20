@@ -30,6 +30,12 @@ Route::put('plats/{plat}', [PlatController::class, 'update']);
 Route::delete('plats/{plat}', [PlatController::class, 'destroy']);
 Route::get('plats-trashed', [PlatController::class, 'trashed']);
 Route::post('plats/{plat}/restore', [PlatController::class, 'restore']);
+Route::put('plats/{plat}/approve', [App\Http\Controllers\PlatController::class, 'approve'])
+    ->name('plats.approve');
+Route::put('plats/{plat}/reject', [App\Http\Controllers\PlatController::class, 'reject'])
+    ->name('plats.reject');
+Route::get('plats-moderation', [App\Http\Controllers\PlatController::class, 'moderation'])
+    ->name('plats.moderation');
 
 // Routes des moyens de paiement des restaurateurs
 Route::get('restaurateur-moyen-paiements', [RestaurateurMoyenPaiementController::class, 'index']);
@@ -48,5 +54,3 @@ Route::put('tarif-livraisons/{tarifLivraison}', [TarifLivraisonController::class
 Route::delete('tarif-livraisons/{tarifLivraison}', [TarifLivraisonController::class, 'destroy']);
 Route::get('tarif-livraisons-trashed', [TarifLivraisonController::class, 'trashed']);
 Route::post('tarif-livraisons/{tarifLivraison}/restore', [TarifLivraisonController::class, 'restore']);
-
-
