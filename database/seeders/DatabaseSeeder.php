@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             QuartierSeeder::class,
             MoyenPaiementSeeder::class,
             CommandeSeeder::class,
+            NotificationCommandeSeeder::class,
         ]);
     }
 }

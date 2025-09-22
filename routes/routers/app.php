@@ -19,9 +19,14 @@ Route::post('commande-items', [CommandeItemController::class, 'store']);
 Route::put('commande-items/{commandeItem}', [CommandeItemController::class, 'update']);
 
 // Routes des notifications de commande
-Route::get('notification-commandes', [NotificationCommandeController::class, 'index']);
-Route::post('notification-commandes', [NotificationCommandeController::class, 'store']);
-Route::get('notification-commandes/{notificationCommande}', [NotificationCommandeController::class, 'show']);
+Route::get('/notifications', [NotificationCommandeController::class, 'index']);
+Route::get('/notifications/recent', [NotificationCommandeController::class, 'recent']);
+Route::get('/notifications/unread-count', [NotificationCommandeController::class, 'unreadCount']);
+Route::post('/notifications', [NotificationCommandeController::class, 'store']);
+Route::patch('/notifications/{id}/read', [NotificationCommandeController::class, 'markAsRead']);
+Route::patch('/notifications/mark-all-read', [NotificationCommandeController::class, 'markAllAsRead']);
+Route::delete('/notifications/{id}', [NotificationCommandeController::class, 'destroy']);
+
 
 Route::get('plats', [PlatController::class, 'index']);
 Route::post('plats', [PlatController::class, 'store']);
