@@ -30,7 +30,6 @@ Route::delete('/notifications/{id}', [NotificationCommandeController::class, 'de
 
 Route::get('plats', [PlatController::class, 'index']);
 Route::post('plats', [PlatController::class, 'store']);
-Route::get('plats/{plat}', [PlatController::class, 'show']);
 Route::put('plats/{plat}', [PlatController::class, 'update']);
 Route::delete('plats/{plat}', [PlatController::class, 'destroy']);
 Route::get('plats-trashed', [PlatController::class, 'trashed']);
@@ -41,6 +40,11 @@ Route::put('plats/{plat}/reject', [App\Http\Controllers\PlatController::class, '
     ->name('plats.reject');
 Route::get('plats-moderation', [App\Http\Controllers\PlatController::class, 'moderation'])
     ->name('plats.moderation');
+Route::get('plats/today', [PlatController::class, 'todayMenus'])->name('plats.today');
+Route::get('plats/stats', [PlatController::class, 'getStats'])->name('plats.stats');
+Route::post('plats/bulk-update-status', [PlatController::class, 'bulkUpdateStatus'])->name('plats.bulk-status');
+Route::get('plats/restaurateur/{id}', [PlatController::class, 'getByRestaurateur'])->name('plats.by-restaurateur');
+Route::get('plats/{plat}', [PlatController::class, 'show']);
 
 // Routes des moyens de paiement des restaurateurs
 Route::get('restaurateur-moyen-paiements', [RestaurateurMoyenPaiementController::class, 'index']);

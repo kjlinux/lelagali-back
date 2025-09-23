@@ -15,6 +15,9 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             QuartierSeeder::class,
             MoyenPaiementSeeder::class,
+            RestaurateurMoyenPaiementSeeder::class,
+            TarifLivraisonSeeder::class,
+            PlatSeeder::class,
             CommandeSeeder::class,
             NotificationCommandeSeeder::class,
         ]);

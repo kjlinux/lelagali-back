@@ -7,14 +7,14 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::prefix('auth')->group(function () {
+Route::prefix('auth')->middleware('api')->group(function () {
     require __DIR__ . '/routers/auth.php';
 });
 
-Route::prefix('app')->group(function () {
+Route::prefix('app')->middleware('api')->group(function () {
     require __DIR__ . '/routers/app.php';
 });
 
-Route::prefix('settings')->group(function () {
+Route::prefix('settings')->middleware('api')->group(function () {
     require __DIR__ . '/routers/settings.php';
 });
