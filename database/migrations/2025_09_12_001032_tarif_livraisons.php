@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignUuid('restaurateur_id')->constrained('users')->onDelete('cascade');
             $table->foreignUuid('quartier_id')->constrained()->onDelete('cascade');
             $table->integer('prix');
-            // $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
             $table->unique(['restaurateur_id', 'quartier_id']);
             $table->softDeletes();

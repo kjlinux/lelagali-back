@@ -18,7 +18,6 @@ return new class extends Migration
             $table->integer('quantite');
             $table->integer('prix_unitaire');
             $table->integer('prix_total');
-            // $table->text('notes')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

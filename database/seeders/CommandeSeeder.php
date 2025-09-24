@@ -25,18 +25,24 @@ class CommandeSeeder extends Seeder
         $moyensPaiement = MoyenPaiement::all();
         $quartiers = Quartier::all();
 
+        // Liste des statuts possibles
+        $statutsCommande = ['en_attente', 'confirmee', 'prete', 'en_livraison', 'recuperee', 'annulee'];
+
         // Pour chaque restaurateur
         foreach ($restaurateurs as $index => $restaurateur) {
+
             // Créer des plats pour ce restaurateur
-            $plats = Plat::factory()->count(3)->create([
-                'restaurateur_id' => $restaurateur->id,
-                'prix' => fake()->numberBetween(2000, 15000)
-            ]);
+            $plats = Plat::factory()
+                ->count(3)
+                ->create([
+                    'restaurateur_id' => $restaurateur->id,
+                    'prix' => fake()->numberBetween(2000, 15000),
+                ]);
 
             // Nombre de commandes pour ce restaurateur
-            $nombreCommandes = $index === 0 ? 3 : 2; // 3 commandes pour le premier, 2 pour les autres
+            $nombreCommandes = $index === 0 ? 3 : 2; // 3 pour le premier, 2 pour les autres
 
-            // Créer les commandes
+            // Création des commandes
             for ($i = 0; $i < $nombreCommandes; $i++) {
                 $client = $clients->random();
                 $quartierLivraison = $quartiers->random();
@@ -53,44 +59,60 @@ class CommandeSeeder extends Seeder
                     $prixTotal = $prixUnitaire * $quantite;
 
                     $itemsCommande[] = [
-                        'plat' => $plat,
+                        'plat_id' => $plat->id,
                         'quantite' => $quantite,
                         'prix_unitaire' => $prixUnitaire,
-                        'prix_total' => $prixTotal
+                        'prix_total' => $prixTotal,
                     ];
 
                     $totalPlats += $prixTotal;
                 }
 
-                // Calculer les totaux avant de créer la commande
+                // Calcul des totaux
                 $typeService = fake()->randomElement(['livraison', 'retrait']);
                 $fraisLivraison = $typeService === 'livraison' ? 1000 : 0;
                 $totalGeneral = $totalPlats + $fraisLivraison;
 
-                // Créer la commande avec tous les totaux
+                // Statut et paiement
+                $status = fake()->randomElement($statutsCommande);
+                $statusPaiement = fake()->boolean(); // true = payé, false = non payé
+
+                // Champs additionnels demandés
+                $referencePaiement = $statusPaiement ? 'PAY-' . strtoupper(fake()->lexify('??????')) : null;
+                $numeroPaiement = $statusPaiement ? 'TRX' . fake()->numberBetween(100000, 999999) : null;
+                $notesClient = fake()->boolean(60) ? fake()->sentence() : null; // 60% de chance d'avoir une note
+                $notesRestaurateur = fake()->boolean(40) ? fake()->sentence() : null; // 40% de chance
+                $raisonAnnulation = $status === 'annulee' ? fake()->sentence() : null;
+
+                // Création de la commande
                 $commande = Commande::create([
                     'client_id' => $client->id,
                     'restaurateur_id' => $restaurateur->id,
                     'type_service' => $typeService,
-                    'adresse_livraison' => fake()->address(),
+                    'adresse_livraison' => $typeService === 'livraison' ? fake()->address() : null,
                     'quartier_livraison_id' => $quartierLivraison->id,
                     'moyen_paiement_id' => $moyensPaiement->random()->id,
-                    'status' => fake()->randomElement(['en_attente', 'confirmee', 'prete', 'en_livraison', 'recuperee']),
-                    'status_paiement' => fake()->boolean(),
+                    'status' => $status,
+                    'status_paiement' => $statusPaiement,
+                    'reference_paiement' => $referencePaiement,
+                    'numero_paiement' => $numeroPaiement,
+                    'notes_client' => $notesClient,
+                    'notes_restaurateur' => $notesRestaurateur,
+                    'raison_annulation' => $raisonAnnulation,
                     'temps_preparation_estime' => fake()->numberBetween(15, 60),
                     'total_plats' => $totalPlats,
                     'frais_livraison' => $fraisLivraison,
-                    'total_general' => $totalGeneral
+                    'total_general' => $totalGeneral,
                 ]);
 
-                // Créer les items de la commande
+                // Création des items liés à la commande
                 foreach ($itemsCommande as $item) {
                     CommandeItem::create([
                         'commande_id' => $commande->id,
-                        'plat_id' => $item['plat']->id,
+                        'plat_id' => $item['plat_id'],
                         'quantite' => $item['quantite'],
                         'prix_unitaire' => $item['prix_unitaire'],
-                        'prix_total' => $item['prix_total']
+                        'prix_total' => $item['prix_total'],
                     ]);
                 }
             }

@@ -22,7 +22,6 @@ return new class extends Migration
             $table->boolean('active')->default(true);
             $table->string('profile_image')->nullable();
             $table->text('address')->nullable();
-            // $table->uuid('quartier_id')->nullable(); // provisoire
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();
