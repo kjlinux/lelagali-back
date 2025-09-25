@@ -437,11 +437,11 @@ Route::put('plats/{plat}', [PlatController::class, 'update']);
 Route::delete('plats/{plat}', [PlatController::class, 'destroy']);
 Route::get('plats-trashed', [PlatController::class, 'trashed']);
 Route::post('plats/{plat}/restore', [PlatController::class, 'restore']);
-Route::put('plats/{plat}/approve', [App\Http\Controllers\PlatController::class, 'approve'])
+Route::put('plats/{plat}/approve', [PlatController::class, 'approve'])
     ->name('plats.approve');
-Route::put('plats/{plat}/reject', [App\Http\Controllers\PlatController::class, 'reject'])
+Route::put('plats/{plat}/reject', [PlatController::class, 'reject'])
     ->name('plats.reject');
-Route::get('plats-moderation', [App\Http\Controllers\PlatController::class, 'moderation'])
+Route::get('plats-moderation', [PlatController::class, 'moderation'])
     ->name('plats.moderation');
 Route::get('plats/today', [PlatController::class, 'todayMenus'])->name('plats.today');
 Route::get('plats/stats', [PlatController::class, 'getStats'])->name('plats.stats');
