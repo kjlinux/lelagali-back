@@ -24,7 +24,7 @@ class RestaurateurMoyenPaiementController extends Controller
                 $query->where('restaurateur_id', $request->restaurateur_id);
             } else {
                 // Par défaut, filtrer par l'utilisateur connecté s'il est restaurateur
-                $user = Auth::user();;
+                $user = Auth::user();
                 if ($user && $user->role === 'restaurateur') {
                     $query->where('restaurateur_id', $user->id);
                 }
@@ -75,9 +75,17 @@ class RestaurateurMoyenPaiementController extends Controller
         try {
             $input = $request->validated();
 
-            // Assigner l'utilisateur connecté si pas de restaurateur_id spécifié
+            // ✅ Fix: Assigner l'utilisateur connecté si pas de restaurateur_id spécifié
             if (!isset($input['restaurateur_id'])) {
-                $input['restaurateur_id'] = Auth::user();
+                $user = Auth::user();
+                if (!$user) {
+                    return response()->json([
+                        'status' => 'error',
+                        'code' => 401,
+                        'message' => 'Utilisateur non authentifié'
+                    ], 401);
+                }
+                $input['restaurateur_id'] = $user->id;
             }
 
             // Vérifier si ce moyen de paiement n'existe pas déjà pour ce restaurateur
@@ -197,7 +205,7 @@ class RestaurateurMoyenPaiementController extends Controller
 
             $input = $request->validated();
 
-            // Ne pas permettre de changer le restaurateur_id ou moyen_paiement_id
+            // ✅ Ne pas permettre de changer le restaurateur_id ou moyen_paiement_id lors d'une mise à jour
             unset($input['restaurateur_id'], $input['moyen_paiement_id']);
 
             $restaurateurMoyenPaiement->update($input);
@@ -331,6 +339,7 @@ class RestaurateurMoyenPaiementController extends Controller
 
             return response()->json([
                 'status' => 'success',
+                'code' => 200,
                 'code' => 200,
                 'message' => 'Moyen de paiement restauré avec succès',
                 'data' => [

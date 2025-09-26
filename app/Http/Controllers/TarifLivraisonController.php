@@ -6,14 +6,28 @@ use Exception;
 use Illuminate\Http\Request;
 use App\Models\TarifLivraison;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\TarifLivraisonRequest;
 
 class TarifLivraisonController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $tarifLivraisons = TarifLivraison::all();
+            $query = TarifLivraison::query();
+            
+            // Filtrer par restaurateur si spécifié
+            if ($request->has('restaurateur_id')) {
+                $query->where('restaurateur_id', $request->restaurateur_id);
+            } else {
+                // Par défaut, filtrer par l'utilisateur connecté s'il est restaurateur
+                $user = Auth::user();
+                if ($user && $user->role === 'restaurateur') {
+                    $query->where('restaurateur_id', $user->id);
+                }
+            }
+
+            $tarifLivraisons = $query->get();
 
             return response()->json([
                 'status' => 'success',
@@ -37,7 +51,33 @@ class TarifLivraisonController extends Controller
 
         try {
             $input = $request->validated();
-            $tarifLivraison = TarifLivraison::create($input);
+            
+            // ✅ Fix: Assigner l'utilisateur connecté si pas de restaurateur_id spécifié
+            if (!isset($input['restaurateur_id'])) {
+                $user = Auth::user();
+                if (!$user) {
+                    return response()->json([
+                        'status' => 'error',
+                        'code' => 401,
+                        'message' => 'Utilisateur non authentifié'
+                    ], 401);
+                }
+                $input['restaurateur_id'] = $user->id;
+            }
+            
+            // Vérifier si un tarif existe déjà pour ce restaurateur et ce quartier
+            $existing = TarifLivraison::where('restaurateur_id', $input['restaurateur_id'])
+                ->where('quartier_id', $input['quartier_id'])
+                ->first();
+
+            if ($existing) {
+                // Mettre à jour le tarif existant au lieu de créer un nouveau
+                $existing->update(['prix' => $input['prix']]);
+                $tarifLivraison = $existing;
+            } else {
+                // Créer un nouveau tarif
+                $tarifLivraison = TarifLivraison::create($input);
+            }
 
             DB::commit();
 
@@ -62,6 +102,16 @@ class TarifLivraisonController extends Controller
     public function show(TarifLivraison $tarifLivraison)
     {
         try {
+            // Vérifier les permissions
+            $user = Auth::user();
+            if ($user->role !== 'admin' && $user->id !== $tarifLivraison->restaurateur_id) {
+                return response()->json([
+                    'status' => 'error',
+                    'code' => 403,
+                    'message' => 'Accès non autorisé'
+                ], 403);
+            }
+
             return response()->json([
                 'status' => 'success',
                 'code' => 200,
@@ -83,7 +133,21 @@ class TarifLivraisonController extends Controller
         DB::beginTransaction();
 
         try {
+            // Vérifier les permissions
+            $user = Auth::user();
+            if ($user->role !== 'admin' && $user->id !== $tarifLivraison->restaurateur_id) {
+                return response()->json([
+                    'status' => 'error',
+                    'code' => 403,
+                    'message' => 'Accès non autorisé'
+                ], 403);
+            }
+
             $input = $request->validated();
+            
+            // ✅ Ne pas permettre de changer le restaurateur_id lors d'une mise à jour
+            unset($input['restaurateur_id']);
+            
             $tarifLivraison->update($input);
 
             DB::commit();
@@ -109,6 +173,16 @@ class TarifLivraisonController extends Controller
     public function destroy(TarifLivraison $tarifLivraison)
     {
         try {
+            // Vérifier les permissions
+            $user = Auth::user();
+            if ($user->role !== 'admin' && $user->id !== $tarifLivraison->restaurateur_id) {
+                return response()->json([
+                    'status' => 'error',
+                    'code' => 403,
+                    'message' => 'Accès non autorisé'
+                ], 403);
+            }
+
             $tarifLivraison->delete();
 
             return response()->json([
@@ -129,7 +203,15 @@ class TarifLivraisonController extends Controller
     public function trashed()
     {
         try {
-            $tarifLivraisons = TarifLivraison::onlyTrashed()->get();
+            $query = TarifLivraison::onlyTrashed();
+            
+            // Filtrer par restaurateur connecté
+            $user = Auth::user();
+            if ($user->role !== 'admin') {
+                $query->where('restaurateur_id', $user->id);
+            }
+            
+            $tarifLivraisons = $query->get();
 
             return response()->json([
                 'status' => 'success',
@@ -150,6 +232,16 @@ class TarifLivraisonController extends Controller
     public function restore(TarifLivraison $tarifLivraison)
     {
         try {
+            // Vérifier les permissions
+            $user = Auth::user();
+            if ($user->role !== 'admin' && $user->id !== $tarifLivraison->restaurateur_id) {
+                return response()->json([
+                    'status' => 'error',
+                    'code' => 403,
+                    'message' => 'Accès non autorisé'
+                ], 403);
+            }
+
             $tarifLivraison->restore();
 
             return response()->json([
