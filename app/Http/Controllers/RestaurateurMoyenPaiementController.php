@@ -14,7 +14,7 @@ class RestaurateurMoyenPaiementController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = RestaurateurMoyenPaiement::with(['moyenPaiement', 'restaurateur']);
+            $query = RestaurateurMoyenPaiement::withTrashed()->with(['moyenPaiement', 'restaurateur']);
 
             if ($request->has('restaurateur_id')) {
                 $query->where('restaurateur_id', $request->restaurateur_id);
