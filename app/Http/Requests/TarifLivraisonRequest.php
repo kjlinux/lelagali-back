@@ -1,14 +1,28 @@
 <?php
+// TarifLivraisonRequest.php - VERSION CORRIGÉE
 
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class TarifLivraisonRequest extends FormRequest
 {
     public function authorize()
     {
         return true;
+    }
+
+    protected function prepareForValidation()
+    {
+        if (!$this->has('restaurateur_id') || empty($this->restaurateur_id)) {
+            $user = Auth::user();
+            if ($user) {
+                $this->merge([
+                    'restaurateur_id' => $user->id
+                ]);
+            }
+        }
     }
 
     public function rules()
@@ -19,11 +33,15 @@ class TarifLivraisonRequest extends FormRequest
             'prix' => 'required|integer|min:0',
         ];
 
-        // Contrainte unique pour la combinaison restaurateur_id et quartier_id
         if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
-            $rules['restaurateur_id'] = 'required|uuid|exists:users,id|unique:tarif_livraisons,restaurateur_id,' . $this->route('tarifLivraison')->id . ',id,quartier_id,' . $this->input('quartier_id');
+            $currentId = $this->route('tarifLivraison') ? $this->route('tarifLivraison')->id : null;
+            if ($currentId) {
+                $rules['restaurateur_id'] = 'required|uuid|exists:users,id|unique:tarif_livraisons,restaurateur_id,' . $currentId . ',id,quartier_id,' . $this->input('quartier_id');
+            }
         } else {
-            $rules['restaurateur_id'] = 'required|uuid|exists:users,id|unique:tarif_livraisons,restaurateur_id,NULL,id,quartier_id,' . $this->input('quartier_id');
+            // Pour les créations - permettre l'upsert en supprimant la contrainte unique stricte
+            // On gèrera la logique d'upsert dans le contrôleur
+            $rules['restaurateur_id'] = 'required|uuid|exists:users,id';
         }
 
         return $rules;

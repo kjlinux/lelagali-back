@@ -15,12 +15,10 @@ class TarifLivraisonController extends Controller
     {
         try {
             $query = TarifLivraison::query();
-            
-            // Filtrer par restaurateur si spécifié
+
             if ($request->has('restaurateur_id')) {
                 $query->where('restaurateur_id', $request->restaurateur_id);
             } else {
-                // Par défaut, filtrer par l'utilisateur connecté s'il est restaurateur
                 $user = Auth::user();
                 if ($user && $user->role === 'restaurateur') {
                     $query->where('restaurateur_id', $user->id);
@@ -51,32 +49,21 @@ class TarifLivraisonController extends Controller
 
         try {
             $input = $request->validated();
-            
-            // ✅ Fix: Assigner l'utilisateur connecté si pas de restaurateur_id spécifié
-            if (!isset($input['restaurateur_id'])) {
-                $user = Auth::user();
-                if (!$user) {
-                    return response()->json([
-                        'status' => 'error',
-                        'code' => 401,
-                        'message' => 'Utilisateur non authentifié'
-                    ], 401);
-                }
-                $input['restaurateur_id'] = $user->id;
-            }
-            
-            // Vérifier si un tarif existe déjà pour ce restaurateur et ce quartier
+
+            // Vérifier si un tarif existe déjà pour ce restaurateur et ce quartier (logique upsert)
             $existing = TarifLivraison::where('restaurateur_id', $input['restaurateur_id'])
                 ->where('quartier_id', $input['quartier_id'])
                 ->first();
 
             if ($existing) {
-                // Mettre à jour le tarif existant au lieu de créer un nouveau
+                // Mettre à jour le tarif existant
                 $existing->update(['prix' => $input['prix']]);
                 $tarifLivraison = $existing;
+                $message = 'Tarif de livraison mis à jour avec succès';
             } else {
                 // Créer un nouveau tarif
                 $tarifLivraison = TarifLivraison::create($input);
+                $message = 'Tarif de livraison créé avec succès';
             }
 
             DB::commit();
@@ -84,7 +71,7 @@ class TarifLivraisonController extends Controller
             return response()->json([
                 'status' => 'success',
                 'code' => 201,
-                'message' => 'Enregistrement créé avec succès',
+                'message' => $message,
                 'data' => $tarifLivraison
             ], 201);
         } catch (Exception $e) {
@@ -99,7 +86,7 @@ class TarifLivraisonController extends Controller
         }
     }
 
-    public function show(TarifLivraison $tarifLivraison)
+        public function show(TarifLivraison $tarifLivraison)
     {
         try {
             // Vérifier les permissions
@@ -133,7 +120,6 @@ class TarifLivraisonController extends Controller
         DB::beginTransaction();
 
         try {
-            // Vérifier les permissions
             $user = Auth::user();
             if ($user->role !== 'admin' && $user->id !== $tarifLivraison->restaurateur_id) {
                 return response()->json([
@@ -144,10 +130,8 @@ class TarifLivraisonController extends Controller
             }
 
             $input = $request->validated();
-            
-            // ✅ Ne pas permettre de changer le restaurateur_id lors d'une mise à jour
-            unset($input['restaurateur_id']);
-            
+            unset($input['restaurateur_id']); // Ne pas modifier le restaurateur_id
+
             $tarifLivraison->update($input);
 
             DB::commit();
@@ -204,13 +188,13 @@ class TarifLivraisonController extends Controller
     {
         try {
             $query = TarifLivraison::onlyTrashed();
-            
+
             // Filtrer par restaurateur connecté
             $user = Auth::user();
             if ($user->role !== 'admin') {
                 $query->where('restaurateur_id', $user->id);
             }
-            
+
             $tarifLivraisons = $query->get();
 
             return response()->json([

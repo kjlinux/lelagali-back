@@ -1,8 +1,10 @@
 <?php
+// RestaurateurMoyenPaiementRequest.php - VERSION CORRIGÉE
 
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class RestaurateurMoyenPaiementRequest extends FormRequest
 {
@@ -11,19 +13,34 @@ class RestaurateurMoyenPaiementRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation()
+    {
+        if (!$this->has('restaurateur_id') || empty($this->restaurateur_id)) {
+            $user = Auth::user();
+            if ($user) {
+                $this->merge([
+                    'restaurateur_id' => $user->id
+                ]);
+            }
+        }
+    }
+
     public function rules()
     {
         $rules = [
             'restaurateur_id' => 'required|uuid|exists:users,id',
             'moyen_paiement_id' => 'required|uuid|exists:moyen_paiements,id',
             'numero_compte' => 'nullable|string|max:255',
+            'nom_titulaire' => 'nullable|string|max:255',
         ];
 
-        // Contrainte unique pour la combinaison restaurateur_id et moyen_paiement_id
+        // Gérer la contrainte unique selon le contexte
         if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
-            $rules['restaurateur_id'] = 'required|uuid|exists:users,id|unique:restaurateur_moyens_paiement,restaurateur_id,' . $this->route('restaurateurMoyenPaiement')->id . ',id,moyen_paiement_id,' . $this->input('moyen_paiement_id');
+            // Pour les mises à jour, ne pas appliquer la contrainte unique
+            // car on ne change généralement que numero_compte et nom_titulaire
         } else {
-            $rules['restaurateur_id'] = 'required|uuid|exists:users,id|unique:restaurateur_moyens_paiement,restaurateur_id,NULL,id,moyen_paiement_id,' . $this->input('moyen_paiement_id');
+            // Pour les créations
+            $rules['restaurateur_id'] = 'required|uuid|exists:users,id|unique:restaurateur_moyen_paiements,restaurateur_id,NULL,id,moyen_paiement_id,' . $this->input('moyen_paiement_id');
         }
 
         return $rules;
@@ -40,6 +57,7 @@ class RestaurateurMoyenPaiementRequest extends FormRequest
             'moyen_paiement_id.uuid' => 'L\'ID moyen de paiement doit être un UUID valide.',
             'moyen_paiement_id.exists' => 'Le moyen de paiement spécifié n\'existe pas.',
             'numero_compte.max' => 'Le numéro de compte ne peut pas dépasser 255 caractères.',
+            'nom_titulaire.max' => 'Le nom du titulaire ne peut pas dépasser 255 caractères.',
         ];
     }
 }

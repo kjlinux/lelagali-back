@@ -168,10 +168,10 @@ class UserController extends Controller
             DB::beginTransaction();
 
             $rules = [
-                'username' => 'required|unique:users,username,' . $user->id,
+                // 'username' => 'required|unique:users,username,' . $user->id,
                 'email'    => 'required|email|unique:users,email,' . $user->id,
                 'name'     => 'required',
-                'surname'  => 'required',
+                // 'surname'  => 'required',
             ];
 
             if ($request->filled('current_password') || $request->filled('new_password') || $request->filled('confirm_new_password')) {
@@ -182,10 +182,10 @@ class UserController extends Controller
 
             $data = $request->validate($rules);
 
-            $user->username = $data['username'];
+            // $user->username = $data['username'];
             $user->email    = $data['email'];
             $user->name     = $data['name'];
-            $user->surname  = $data['surname'];
+            // $user->surname  = $data['surname'];
 
             $passToEmail = null;
             if (!empty($data['current_password'])) {
@@ -269,10 +269,10 @@ class UserController extends Controller
             return $this->respondWithToken($token);
         }
 
-        $credentialsUsername = ['username' => $login, 'password' => $password];
-        if ($token = Auth::attempt($credentialsUsername)) {
-            return $this->respondWithToken($token);
-        }
+        // $credentialsUsername = ['username' => $login, 'password' => $password];
+        // if ($token = Auth::attempt($credentialsUsername)) {
+        //     return $this->respondWithToken($token);
+        // }
 
         return response()->json([
             'status' => 'error',

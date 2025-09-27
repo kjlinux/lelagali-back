@@ -180,8 +180,8 @@ class NotificationCommandeController extends Controller
     private function getUnreadCount(): int
     {
         return NotificationCommande::where(function ($query) {
-            $query->where('user_id', Auth::id())
-                ->orWhereNull('user_id');
+            $query->where('user_id', Auth::id());
+                // ->orWhereNull('user_id');
         })
             ->where('is_read', false)
             ->count();

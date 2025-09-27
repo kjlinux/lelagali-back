@@ -22,404 +22,404 @@ Route::get('commande-items', [CommandeItemController::class, 'index']);
 Route::post('commande-items', [CommandeItemController::class, 'store']);
 Route::put('commande-items/{commandeItem}', [CommandeItemController::class, 'update']);
 
-    // Routes des commandes
-    Route::prefix('app/commandes')->group(function () {
-        // Liste des commandes avec filtres et pagination
-        Route::get('/', [CommandeController::class, 'index']);
+// Routes des commandes
+Route::prefix('app/commandes')->group(function () {
+    // Liste des commandes avec filtres et pagination
+    Route::get('/', [CommandeController::class, 'index']);
 
-        // Créer une nouvelle commande
-        Route::post('/', [CommandeController::class, 'store']);
+    // Créer une nouvelle commande
+    Route::post('/', [CommandeController::class, 'store']);
 
-        // Détails d'une commande spécifique
-        Route::get('/{id}', [CommandeController::class, 'show']);
+    // Détails d'une commande spécifique
+    Route::get('/{id}', [CommandeController::class, 'show']);
 
-        // Mettre à jour une commande (statut, paiement, etc.)
-        Route::put('/{id}', [CommandeController::class, 'update']);
+    // Mettre à jour une commande (statut, paiement, etc.)
+    Route::put('/{id}', [CommandeController::class, 'update']);
 
-        // Supprimer une commande (soft delete)
-        Route::delete('/{id}', [CommandeController::class, 'destroy']);
+    // Supprimer une commande (soft delete)
+    Route::delete('/{id}', [CommandeController::class, 'destroy']);
 
-        // Statistiques des commandes
-        Route::get('/stats/dashboard', [CommandeController::class, 'statistics']);
+    // Statistiques des commandes
+    Route::get('/stats/dashboard', [CommandeController::class, 'statistics']);
+});
+
+// Routes spécifiques pour les actions sur les commandes
+Route::prefix('app/commandes/{id}')->group(function () {
+    // Accepter une commande
+    Route::patch('/accept', function ($id) {
+        $commande = \App\Models\Commande::findOrFail($id);
+        if ($commande->accepter()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Commande acceptée',
+                'data' => $commande->fresh()
+            ]);
+        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Impossible d\'accepter cette commande'
+        ], 400);
     });
 
-    // Routes spécifiques pour les actions sur les commandes
-    Route::prefix('app/commandes/{id}')->group(function () {
-        // Accepter une commande
-        Route::patch('/accept', function ($id) {
-            $commande = \App\Models\Commande::findOrFail($id);
-            if ($commande->accepter()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Commande acceptée',
-                    'data' => $commande->fresh()
-                ]);
-            }
+    // Marquer comme prête
+    Route::patch('/ready', function ($id) {
+        $commande = \App\Models\Commande::findOrFail($id);
+        if ($commande->marquerPrete()) {
             return response()->json([
-                'success' => false,
-                'message' => 'Impossible d\'accepter cette commande'
-            ], 400);
-        });
-
-        // Marquer comme prête
-        Route::patch('/ready', function ($id) {
-            $commande = \App\Models\Commande::findOrFail($id);
-            if ($commande->marquerPrete()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Commande marquée comme prête',
-                    'data' => $commande->fresh()
-                ]);
-            }
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de marquer cette commande comme prête'
-            ], 400);
-        });
-
-        // Mettre en livraison
-        Route::patch('/deliver', function ($id) {
-            $commande = \App\Models\Commande::findOrFail($id);
-            if ($commande->mettreEnLivraison()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Commande en cours de livraison',
-                    'data' => $commande->fresh()
-                ]);
-            }
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de mettre cette commande en livraison'
-            ], 400);
-        });
-
-        // Marquer comme récupérée/livrée
-        Route::patch('/complete', function ($id) {
-            $commande = \App\Models\Commande::findOrFail($id);
-            if ($commande->marquerRecuperee()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Commande terminée',
-                    'data' => $commande->fresh()
-                ]);
-            }
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de terminer cette commande'
-            ], 400);
-        });
-
-        // Annuler une commande
-        Route::patch('/cancel', function (Request $request, $id) {
-            $request->validate([
-                'raison' => 'sometimes|string|max:500'
+                'success' => true,
+                'message' => 'Commande marquée comme prête',
+                'data' => $commande->fresh()
             ]);
-
-            $commande = \App\Models\Commande::findOrFail($id);
-            $raison = $request->input('raison');
-
-            if ($commande->annuler($raison)) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Commande annulée',
-                    'data' => $commande->fresh()
-                ]);
-            }
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible d\'annuler cette commande'
-            ], 400);
-        });
-
-        // Marquer comme payée
-        Route::patch('/mark-paid', function (Request $request, $id) {
-            $request->validate([
-                'reference_paiement' => 'sometimes|string|max:100',
-                'numero_paiement' => 'sometimes|string|max:20'
-            ]);
-
-            $commande = \App\Models\Commande::findOrFail($id);
-            $reference = $request->input('reference_paiement');
-            $numero = $request->input('numero_paiement');
-
-            if ($commande->marquerPayee($reference, $numero)) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Paiement confirmé',
-                    'data' => $commande->fresh()
-                ]);
-            }
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de confirmer le paiement'
-            ], 400);
-        });
+        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Impossible de marquer cette commande comme prête'
+        ], 400);
     });
 
-    // Routes pour les items de commande
-    Route::prefix('app/commande-items')->group(function () {
-        // Liste des items d'une commande
-        Route::get('/', function (Request $request) {
-            $query = \App\Models\CommandeItem::with(['plat:id,nom,description,prix,image', 'commande:id,numero_commande']);
-
-            if ($request->has('commande_id')) {
-                $query->where('commande_id', $request->commande_id);
-            }
-
-            $items = $query->get();
-
+    // Mettre en livraison
+    Route::patch('/deliver', function ($id) {
+        $commande = \App\Models\Commande::findOrFail($id);
+        if ($commande->mettreEnLivraison()) {
             return response()->json([
                 'success' => true,
-                'data' => $items
+                'message' => 'Commande en cours de livraison',
+                'data' => $commande->fresh()
             ]);
-        });
-
-        // Ajouter un item à une commande
-        Route::post('/', function (Request $request) {
-            $validated = $request->validate([
-                'commande_id' => 'required|uuid|exists:commandes,id',
-                'plat_id' => 'required|uuid|exists:plats,id',
-                'quantite' => 'required|integer|min:1',
-                'prix_unitaire' => 'required|integer|min:0',
-                'notes' => 'sometimes|string|max:500'
-            ]);
-
-            $item = \App\Models\CommandeItem::create($validated);
-
-            // Recalculer les totaux de la commande
-            $item->commande->recalculerTotaux();
-
-            return response()->json([
-                'success' => true,
-                'data' => $item->load(['plat:id,nom,prix', 'commande:id,numero_commande']),
-                'message' => 'Item ajouté à la commande'
-            ], 201);
-        });
-
-        // Mettre à jour un item de commande
-        Route::put('/{itemId}', function (Request $request, $itemId) {
-            $item = \App\Models\CommandeItem::findOrFail($itemId);
-
-            $validated = $request->validate([
-                'quantite' => 'sometimes|integer|min:1',
-                'prix_unitaire' => 'sometimes|integer|min:0',
-                'notes' => 'sometimes|string|max:500'
-            ]);
-
-            $item->update($validated);
-
-            // Recalculer les totaux de la commande
-            $item->commande->recalculerTotaux();
-
-            return response()->json([
-                'success' => true,
-                'data' => $item->fresh(['plat:id,nom,prix', 'commande:id,numero_commande']),
-                'message' => 'Item mis à jour'
-            ]);
-        });
-
-        // Supprimer un item de commande
-        Route::delete('/{itemId}', function ($itemId) {
-            $item = \App\Models\CommandeItem::findOrFail($itemId);
-            $commande = $item->commande;
-
-            $item->delete();
-
-            // Recalculer les totaux de la commande
-            $commande->recalculerTotaux();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Item supprimé de la commande'
-            ]);
-        });
+        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Impossible de mettre cette commande en livraison'
+        ], 400);
     });
 
-    // Routes pour les moyens de paiement
-    Route::prefix('app/moyens-paiement')->group(function () {
-        Route::get('/', function () {
-            $moyens = \App\Models\MoyenPaiement::all();
+    // Marquer comme récupérée/livrée
+    Route::patch('/complete', function ($id) {
+        $commande = \App\Models\Commande::findOrFail($id);
+        if ($commande->marquerRecuperee()) {
             return response()->json([
                 'success' => true,
-                'data' => $moyens
+                'message' => 'Commande terminée',
+                'data' => $commande->fresh()
             ]);
-        });
+        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Impossible de terminer cette commande'
+        ], 400);
     });
 
-    // Routes pour les quartiers
-    Route::prefix('app/quartiers')->group(function () {
-        Route::get('/', function () {
-            $quartiers = \App\Models\Quartier::all();
+    // Annuler une commande
+    Route::patch('/cancel', function (Request $request, $id) {
+        $request->validate([
+            'raison' => 'sometimes|string|max:500'
+        ]);
+
+        $commande = \App\Models\Commande::findOrFail($id);
+        $raison = $request->input('raison');
+
+        if ($commande->annuler($raison)) {
             return response()->json([
                 'success' => true,
-                'data' => $quartiers
+                'message' => 'Commande annulée',
+                'data' => $commande->fresh()
             ]);
-        });
+        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Impossible d\'annuler cette commande'
+        ], 400);
     });
 
-    // Routes de recherche et de filtrage avancé
-    Route::prefix('app/search')->group(function () {
-        // Recherche de commandes avec filtres avancés
-        Route::post('/commandes', function (Request $request) {
-            $query = \App\Models\Commande::with([
-                'client:id,name,phone',
-                'restaurateur:id,name',
-                'moyenPaiement:id,nom',
-                'quartierLivraison:id,nom',
-                'items.plat:id,nom,prix'
-            ]);
+    // Marquer comme payée
+    Route::patch('/mark-paid', function (Request $request, $id) {
+        $request->validate([
+            'reference_paiement' => 'sometimes|string|max:100',
+            'numero_paiement' => 'sometimes|string|max:20'
+        ]);
 
-            // Filtres avancés
-            if ($request->filled('status')) {
-                if (is_array($request->status)) {
-                    $query->whereIn('status', $request->status);
-                } else {
-                    $query->where('status', $request->status);
-                }
-            }
+        $commande = \App\Models\Commande::findOrFail($id);
+        $reference = $request->input('reference_paiement');
+        $numero = $request->input('numero_paiement');
 
-            if ($request->filled('type_service')) {
-                $query->where('type_service', $request->type_service);
-            }
-
-            if ($request->filled('status_paiement')) {
-                $query->where('status_paiement', $request->boolean('status_paiement'));
-            }
-
-            if ($request->filled('montant_min')) {
-                $query->where('total_general', '>=', $request->montant_min);
-            }
-
-            if ($request->filled('montant_max')) {
-                $query->where('total_general', '<=', $request->montant_max);
-            }
-
-            if ($request->filled('date_debut')) {
-                $query->whereDate('created_at', '>=', $request->date_debut);
-            }
-
-            if ($request->filled('date_fin')) {
-                $query->whereDate('created_at', '<=', $request->date_fin);
-            }
-
-            if ($request->filled('restaurateur_ids')) {
-                $query->whereIn('restaurateur_id', $request->restaurateur_ids);
-            }
-
-            if ($request->filled('client_ids')) {
-                $query->whereIn('client_id', $request->client_ids);
-            }
-
-            // Tri
-            $sortBy = $request->get('sort_by', 'created_at');
-            $sortDirection = $request->get('sort_direction', 'desc');
-            $query->orderBy($sortBy, $sortDirection);
-
-            // Pagination
-            $perPage = min($request->get('per_page', 15), 50); // Max 50 par page
-            $commandes = $query->paginate($perPage);
-
+        if ($commande->marquerPayee($reference, $numero)) {
             return response()->json([
                 'success' => true,
-                'data' => $commandes->items(),
-                'meta' => [
-                    'current_page' => $commandes->currentPage(),
-                    'per_page' => $commandes->perPage(),
-                    'total' => $commandes->total(),
-                    'last_page' => $commandes->lastPage(),
-                    'from' => $commandes->firstItem(),
-                    'to' => $commandes->lastItem(),
-                ]
+                'message' => 'Paiement confirmé',
+                'data' => $commande->fresh()
             ]);
-        });
+        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Impossible de confirmer le paiement'
+        ], 400);
+    });
+});
+
+// Routes pour les items de commande
+Route::prefix('app/commande-items')->group(function () {
+    // Liste des items d'une commande
+    Route::get('/', function (Request $request) {
+        $query = \App\Models\CommandeItem::with(['plat:id,nom,description,prix,image', 'commande:id,numero_commande']);
+
+        if ($request->has('commande_id')) {
+            $query->where('commande_id', $request->commande_id);
+        }
+
+        $items = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $items
+        ]);
     });
 
-    // Routes de rapport et d'export
-    Route::prefix('app/reports')->group(function () {
-        // Rapport des ventes par période
-        Route::get('/sales', function (Request $request) {
-            $request->validate([
-                'date_debut' => 'required|date',
-                'date_fin' => 'required|date|after_or_equal:date_debut',
-                'restaurateur_id' => 'sometimes|uuid|exists:users,id'
-            ]);
+    // Ajouter un item à une commande
+    Route::post('/', function (Request $request) {
+        $validated = $request->validate([
+            'commande_id' => 'required|uuid|exists:commandes,id',
+            'plat_id' => 'required|uuid|exists:plats,id',
+            'quantite' => 'required|integer|min:1',
+            'prix_unitaire' => 'required|integer|min:0',
+            'notes' => 'sometimes|string|max:500'
+        ]);
 
-            $query = \App\Models\Commande::where('status', 'recuperee')
-                ->whereBetween('created_at', [$request->date_debut, $request->date_fin]);
+        $item = \App\Models\CommandeItem::create($validated);
 
-            if ($request->filled('restaurateur_id')) {
-                $query->where('restaurateur_id', $request->restaurateur_id);
-            }
+        // Recalculer les totaux de la commande
+        $item->commande->recalculerTotaux();
 
-            $commandes = $query->with(['client:id,name', 'restaurateur:id,name', 'items.plat:id,nom'])
-                ->get();
-
-            $rapport = [
-                'periode' => [
-                    'debut' => $request->date_debut,
-                    'fin' => $request->date_fin
-                ],
-                'resume' => [
-                    'nombre_commandes' => $commandes->count(),
-                    'chiffre_affaires' => $commandes->sum('total_general'),
-                    'panier_moyen' => $commandes->avg('total_general'),
-                    'frais_livraison_total' => $commandes->sum('frais_livraison')
-                ],
-                'par_type_service' => [
-                    'livraison' => $commandes->where('type_service', 'livraison')->count(),
-                    'retrait' => $commandes->where('type_service', 'retrait')->count()
-                ],
-                'commandes' => $commandes
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $rapport
-            ]);
-        });
-
-        // Rapport des plats les plus vendus
-        Route::get('/bestsellers', function (Request $request) {
-            $request->validate([
-                'date_debut' => 'sometimes|date',
-                'date_fin' => 'sometimes|date|after_or_equal:date_debut',
-                'restaurateur_id' => 'sometimes|uuid|exists:users,id',
-                'limit' => 'sometimes|integer|min:1|max:100'
-            ]);
-
-            $query = \App\Models\CommandeItem::join('commandes', 'commande_items.commande_id', '=', 'commandes.id')
-                ->where('commandes.status', 'recuperee')
-                ->with('plat:id,nom,description,prix,image');
-
-            if ($request->filled('date_debut')) {
-                $query->whereDate('commandes.created_at', '>=', $request->date_debut);
-            }
-
-            if ($request->filled('date_fin')) {
-                $query->whereDate('commandes.created_at', '<=', $request->date_fin);
-            }
-
-            if ($request->filled('restaurateur_id')) {
-                $query->where('commandes.restaurateur_id', $request->restaurateur_id);
-            }
-
-            $limit = $request->get('limit', 10);
-
-            $bestsellers = $query->select('commande_items.plat_id')
-                ->selectRaw('SUM(commande_items.quantite) as total_vendu')
-                ->selectRaw('SUM(commande_items.prix_total) as chiffre_affaires')
-                ->selectRaw('COUNT(DISTINCT commande_items.commande_id) as nombre_commandes')
-                ->groupBy('commande_items.plat_id')
-                ->orderByDesc('total_vendu')
-                ->limit($limit)
-                ->get();
-
-            return response()->json([
-                'success' => true,
-                'data' => $bestsellers
-            ]);
-        });
+        return response()->json([
+            'success' => true,
+            'data' => $item->load(['plat:id,nom,prix', 'commande:id,numero_commande']),
+            'message' => 'Item ajouté à la commande'
+        ], 201);
     });
+
+    // Mettre à jour un item de commande
+    Route::put('/{itemId}', function (Request $request, $itemId) {
+        $item = \App\Models\CommandeItem::findOrFail($itemId);
+
+        $validated = $request->validate([
+            'quantite' => 'sometimes|integer|min:1',
+            'prix_unitaire' => 'sometimes|integer|min:0',
+            'notes' => 'sometimes|string|max:500'
+        ]);
+
+        $item->update($validated);
+
+        // Recalculer les totaux de la commande
+        $item->commande->recalculerTotaux();
+
+        return response()->json([
+            'success' => true,
+            'data' => $item->fresh(['plat:id,nom,prix', 'commande:id,numero_commande']),
+            'message' => 'Item mis à jour'
+        ]);
+    });
+
+    // Supprimer un item de commande
+    Route::delete('/{itemId}', function ($itemId) {
+        $item = \App\Models\CommandeItem::findOrFail($itemId);
+        $commande = $item->commande;
+
+        $item->delete();
+
+        // Recalculer les totaux de la commande
+        $commande->recalculerTotaux();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Item supprimé de la commande'
+        ]);
+    });
+});
+
+// Routes pour les moyens de paiement
+Route::prefix('app/moyens-paiement')->group(function () {
+    Route::get('/', function () {
+        $moyens = \App\Models\MoyenPaiement::all();
+        return response()->json([
+            'success' => true,
+            'data' => $moyens
+        ]);
+    });
+});
+
+// Routes pour les quartiers
+Route::prefix('app/quartiers')->group(function () {
+    Route::get('/', function () {
+        $quartiers = \App\Models\Quartier::all();
+        return response()->json([
+            'success' => true,
+            'data' => $quartiers
+        ]);
+    });
+});
+
+// Routes de recherche et de filtrage avancé
+Route::prefix('app/search')->group(function () {
+    // Recherche de commandes avec filtres avancés
+    Route::post('/commandes', function (Request $request) {
+        $query = \App\Models\Commande::with([
+            'client:id,name,phone',
+            'restaurateur:id,name',
+            'moyenPaiement:id,nom',
+            'quartierLivraison:id,nom',
+            'items.plat:id,nom,prix'
+        ]);
+
+        // Filtres avancés
+        if ($request->filled('status')) {
+            if (is_array($request->status)) {
+                $query->whereIn('status', $request->status);
+            } else {
+                $query->where('status', $request->status);
+            }
+        }
+
+        if ($request->filled('type_service')) {
+            $query->where('type_service', $request->type_service);
+        }
+
+        if ($request->filled('status_paiement')) {
+            $query->where('status_paiement', $request->boolean('status_paiement'));
+        }
+
+        if ($request->filled('montant_min')) {
+            $query->where('total_general', '>=', $request->montant_min);
+        }
+
+        if ($request->filled('montant_max')) {
+            $query->where('total_general', '<=', $request->montant_max);
+        }
+
+        if ($request->filled('date_debut')) {
+            $query->whereDate('created_at', '>=', $request->date_debut);
+        }
+
+        if ($request->filled('date_fin')) {
+            $query->whereDate('created_at', '<=', $request->date_fin);
+        }
+
+        if ($request->filled('restaurateur_ids')) {
+            $query->whereIn('restaurateur_id', $request->restaurateur_ids);
+        }
+
+        if ($request->filled('client_ids')) {
+            $query->whereIn('client_id', $request->client_ids);
+        }
+
+        // Tri
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortDirection = $request->get('sort_direction', 'desc');
+        $query->orderBy($sortBy, $sortDirection);
+
+        // Pagination
+        $perPage = min($request->get('per_page', 15), 50); // Max 50 par page
+        $commandes = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $commandes->items(),
+            'meta' => [
+                'current_page' => $commandes->currentPage(),
+                'per_page' => $commandes->perPage(),
+                'total' => $commandes->total(),
+                'last_page' => $commandes->lastPage(),
+                'from' => $commandes->firstItem(),
+                'to' => $commandes->lastItem(),
+            ]
+        ]);
+    });
+});
+
+// Routes de rapport et d'export
+Route::prefix('app/reports')->group(function () {
+    // Rapport des ventes par période
+    Route::get('/sales', function (Request $request) {
+        $request->validate([
+            'date_debut' => 'required|date',
+            'date_fin' => 'required|date|after_or_equal:date_debut',
+            'restaurateur_id' => 'sometimes|uuid|exists:users,id'
+        ]);
+
+        $query = \App\Models\Commande::where('status', 'recuperee')
+            ->whereBetween('created_at', [$request->date_debut, $request->date_fin]);
+
+        if ($request->filled('restaurateur_id')) {
+            $query->where('restaurateur_id', $request->restaurateur_id);
+        }
+
+        $commandes = $query->with(['client:id,name', 'restaurateur:id,name', 'items.plat:id,nom'])
+            ->get();
+
+        $rapport = [
+            'periode' => [
+                'debut' => $request->date_debut,
+                'fin' => $request->date_fin
+            ],
+            'resume' => [
+                'nombre_commandes' => $commandes->count(),
+                'chiffre_affaires' => $commandes->sum('total_general'),
+                'panier_moyen' => $commandes->avg('total_general'),
+                'frais_livraison_total' => $commandes->sum('frais_livraison')
+            ],
+            'par_type_service' => [
+                'livraison' => $commandes->where('type_service', 'livraison')->count(),
+                'retrait' => $commandes->where('type_service', 'retrait')->count()
+            ],
+            'commandes' => $commandes
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $rapport
+        ]);
+    });
+
+    // Rapport des plats les plus vendus
+    Route::get('/bestsellers', function (Request $request) {
+        $request->validate([
+            'date_debut' => 'sometimes|date',
+            'date_fin' => 'sometimes|date|after_or_equal:date_debut',
+            'restaurateur_id' => 'sometimes|uuid|exists:users,id',
+            'limit' => 'sometimes|integer|min:1|max:100'
+        ]);
+
+        $query = \App\Models\CommandeItem::join('commandes', 'commande_items.commande_id', '=', 'commandes.id')
+            ->where('commandes.status', 'recuperee')
+            ->with('plat:id,nom,description,prix,image');
+
+        if ($request->filled('date_debut')) {
+            $query->whereDate('commandes.created_at', '>=', $request->date_debut);
+        }
+
+        if ($request->filled('date_fin')) {
+            $query->whereDate('commandes.created_at', '<=', $request->date_fin);
+        }
+
+        if ($request->filled('restaurateur_id')) {
+            $query->where('commandes.restaurateur_id', $request->restaurateur_id);
+        }
+
+        $limit = $request->get('limit', 10);
+
+        $bestsellers = $query->select('commande_items.plat_id')
+            ->selectRaw('SUM(commande_items.quantite) as total_vendu')
+            ->selectRaw('SUM(commande_items.prix_total) as chiffre_affaires')
+            ->selectRaw('COUNT(DISTINCT commande_items.commande_id) as nombre_commandes')
+            ->groupBy('commande_items.plat_id')
+            ->orderByDesc('total_vendu')
+            ->limit($limit)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $bestsellers
+        ]);
+    });
+});
 
 // Routes des notifications de commande
 Route::get('/notifications', [NotificationCommandeController::class, 'index']);

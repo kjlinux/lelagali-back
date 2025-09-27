@@ -11,19 +11,14 @@ use App\Http\Requests\RestaurateurMoyenPaiementRequest;
 
 class RestaurateurMoyenPaiementController extends Controller
 {
-    /**
-     * Récupère les moyens de paiement d'un restaurateur avec les détails complets
-     */
     public function index(Request $request)
     {
         try {
             $query = RestaurateurMoyenPaiement::with(['moyenPaiement', 'restaurateur']);
 
-            // Filtrer par restaurateur si spécifié
             if ($request->has('restaurateur_id')) {
                 $query->where('restaurateur_id', $request->restaurateur_id);
             } else {
-                // Par défaut, filtrer par l'utilisateur connecté s'il est restaurateur
                 $user = Auth::user();
                 if ($user && $user->role === 'restaurateur') {
                     $query->where('restaurateur_id', $user->id);
@@ -32,7 +27,6 @@ class RestaurateurMoyenPaiementController extends Controller
 
             $restaurateurMoyenPaiements = $query->get();
 
-            // Transformer les données pour inclure les informations du moyen de paiement
             $formattedData = $restaurateurMoyenPaiements->map(function ($rmp) {
                 return [
                     'id' => $rmp->id,
@@ -42,7 +36,6 @@ class RestaurateurMoyenPaiementController extends Controller
                     'nom_titulaire' => $rmp->nom_titulaire,
                     'created_at' => $rmp->created_at,
                     'updated_at' => $rmp->updated_at,
-                    // Informations du moyen de paiement
                     'moyen_paiement' => [
                         'id' => $rmp->moyenPaiement->id,
                         'nom' => $rmp->moyenPaiement->nom,
@@ -75,19 +68,6 @@ class RestaurateurMoyenPaiementController extends Controller
         try {
             $input = $request->validated();
 
-            // ✅ Fix: Assigner l'utilisateur connecté si pas de restaurateur_id spécifié
-            if (!isset($input['restaurateur_id'])) {
-                $user = Auth::user();
-                if (!$user) {
-                    return response()->json([
-                        'status' => 'error',
-                        'code' => 401,
-                        'message' => 'Utilisateur non authentifié'
-                    ], 401);
-                }
-                $input['restaurateur_id'] = $user->id;
-            }
-
             // Vérifier si ce moyen de paiement n'existe pas déjà pour ce restaurateur
             $existing = RestaurateurMoyenPaiement::where('restaurateur_id', $input['restaurateur_id'])
                 ->where('moyen_paiement_id', $input['moyen_paiement_id'])
@@ -102,8 +82,6 @@ class RestaurateurMoyenPaiementController extends Controller
             }
 
             $restaurateurMoyenPaiement = RestaurateurMoyenPaiement::create($input);
-
-            // Charger les relations
             $restaurateurMoyenPaiement->load(['moyenPaiement', 'restaurateur']);
 
             DB::commit();
@@ -193,7 +171,6 @@ class RestaurateurMoyenPaiementController extends Controller
         DB::beginTransaction();
 
         try {
-            // Vérifier les permissions
             $user = Auth::user();
             if ($user->role !== 'admin' && $user->id !== $restaurateurMoyenPaiement->restaurateur_id) {
                 return response()->json([
@@ -205,12 +182,10 @@ class RestaurateurMoyenPaiementController extends Controller
 
             $input = $request->validated();
 
-            // ✅ Ne pas permettre de changer le restaurateur_id ou moyen_paiement_id lors d'une mise à jour
+            // Ne pas permettre de changer restaurateur_id et moyen_paiement_id
             unset($input['restaurateur_id'], $input['moyen_paiement_id']);
 
             $restaurateurMoyenPaiement->update($input);
-
-            // Recharger les relations
             $restaurateurMoyenPaiement->load(['moyenPaiement']);
 
             DB::commit();
