@@ -1,5 +1,5 @@
 <?php
-// RestaurateurMoyenPaiementRequest.php - VERSION CORRIGÉE
+// RestaurateurMoyenPaiementRequest.php - VERSION FINALE CORRIGÉE
 
 namespace App\Http\Requests;
 
@@ -15,11 +15,23 @@ class RestaurateurMoyenPaiementRequest extends FormRequest
 
     protected function prepareForValidation()
     {
+        // ✅ CORRECTION : Assurer que restaurateur_id est toujours présent
         if (!$this->has('restaurateur_id') || empty($this->restaurateur_id)) {
             $user = Auth::user();
             if ($user) {
                 $this->merge([
                     'restaurateur_id' => $user->id
+                ]);
+            }
+        }
+
+        // ✅ CORRECTION : Pour les mises à jour, garder les IDs existants
+        if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
+            $restaurateurMoyenPaiement = $this->route('restaurateurMoyenPaiement');
+            if ($restaurateurMoyenPaiement) {
+                $this->merge([
+                    'restaurateur_id' => $restaurateurMoyenPaiement->restaurateur_id,
+                    'moyen_paiement_id' => $restaurateurMoyenPaiement->moyen_paiement_id
                 ]);
             }
         }
@@ -29,18 +41,20 @@ class RestaurateurMoyenPaiementRequest extends FormRequest
     {
         $rules = [
             'restaurateur_id' => 'required|uuid|exists:users,id',
-            'moyen_paiement_id' => 'required|uuid|exists:moyen_paiements,id',
             'numero_compte' => 'nullable|string|max:255',
             'nom_titulaire' => 'nullable|string|max:255',
         ];
 
-        // Gérer la contrainte unique selon le contexte
+        // ✅ Gestion différente selon le contexte
         if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
-            // Pour les mises à jour, ne pas appliquer la contrainte unique
-            // car on ne change généralement que numero_compte et nom_titulaire
+            // Pour les mises à jour, ne pas valider moyen_paiement_id
+            // car on ne le change pas
         } else {
             // Pour les créations
-            $rules['restaurateur_id'] = 'required|uuid|exists:users,id|unique:restaurateur_moyen_paiements,restaurateur_id,NULL,id,moyen_paiement_id,' . $this->input('moyen_paiement_id');
+            $rules['moyen_paiement_id'] = 'required|uuid|exists:moyen_paiements,id';
+
+            // ✅ Vérifier l'unicité pour les créations seulement
+            $rules['restaurateur_id'] = $rules['restaurateur_id'] . '|unique:restaurateur_moyen_paiements,restaurateur_id,NULL,id,moyen_paiement_id,' . ($this->input('moyen_paiement_id') ?? 'NULL');
         }
 
         return $rules;

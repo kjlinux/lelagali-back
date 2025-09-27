@@ -130,7 +130,7 @@ class TarifLivraisonController extends Controller
             }
 
             $input = $request->validated();
-            unset($input['restaurateur_id']); // Ne pas modifier le restaurateur_id
+            unset($input['restaurateur_id'], $input['quartier_id']); // Ne pas modifier le restaurateur_id
 
             $tarifLivraison->update($input);
 
