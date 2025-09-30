@@ -4,9 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Commande;
 use App\Models\NotificationCommande;
-use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class NotificationCommandeSeeder extends Seeder
 {
@@ -15,31 +13,30 @@ class NotificationCommandeSeeder extends Seeder
      */
     public function run(): void
     {
-        // Récupérer quelques commandes et utilisateurs existants
+        // Récupérer quelques commandes existantes
         $commandes = Commande::all();
-        $users = User::all();
 
-        if ($commandes->isEmpty() || $users->isEmpty()) {
+        if ($commandes->isEmpty()) {
             return;
         }
 
         $types = ['order', 'user', 'payment', 'system', 'info', 'warning', 'success', 'error'];
 
-        foreach ($commandes as $commande) {
+        foreach ($commandes as $index => $commande) {
             // Créer une notification pour chaque type possible
-            foreach ($types as $type) {
+            foreach ($types as $typeIndex => $type) {
                 NotificationCommande::create([
                     'title' => $this->getTitre($type),
                     'message' => $this->getMessage($type, $commande->id),
                     'type' => $type,
-                    'user_id' => $commande->user_id,
-                    'is_read' => fake()->boolean(30), // 30% de chances d'être lu
-                    'read_at' => fake()->boolean(30) ? now()->subMinutes(fake()->numberBetween(1, 60)) : null,
-                    'action_required' => fake()->boolean(20), // 20% de chances de nécessiter une action
+                    'user_id' => $commande->client_id ?? $commande->restaurateur_id, // dépend de ta structure
+                    'is_read' => $typeIndex % 2 === 0, // une sur deux est lue
+                    'read_at' => $typeIndex % 2 === 0 ? now()->subMinutes(10 * ($index + 1)) : null,
+                    'action_required' => $typeIndex % 3 === 0, // une sur trois nécessite une action
                     'data' => json_encode([
                         'commande_id' => $commande->id,
-                        'amount' => fake()->randomFloat(2, 10, 200),
-                        'status' => fake()->randomElement(['pending', 'processing', 'completed']),
+                        'amount' => 100.00 + ($index * 50), // montant déterministe
+                        'status' => $this->getStatus($typeIndex),
                     ])
                 ]);
             }
@@ -80,5 +77,14 @@ class NotificationCommandeSeeder extends Seeder
             'error' => "Un problème est survenu avec votre commande #$commandeId.",
             default => "Nouvelle notification système"
         };
+    }
+
+    /**
+     * Retourner un statut déterministe en fonction de l’index
+     */
+    private function getStatus(int $index): string
+    {
+        $statuses = ['pending', 'processing', 'completed'];
+        return $statuses[$index % count($statuses)];
     }
 }
