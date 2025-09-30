@@ -9,7 +9,7 @@ use App\Models\Plat;
 use App\Models\Quartier;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Faker\Factory as Faker;
+// SUPPRIMÉ : use Faker\Factory as Faker;
 
 class CommandeSeeder extends Seeder
 {
@@ -18,8 +18,8 @@ class CommandeSeeder extends Seeder
      */
     public function run(): void
     {
-        // Initialiser Faker
-        $faker = Faker::create('fr_FR');
+        // Utiliser le helper fake() de Laravel au lieu de Faker\Factory
+        $faker = fake('fr_FR');
 
         // Récupération des utilisateurs nécessaires
         $clients = User::where('role', 'client')->take(4)->get();
