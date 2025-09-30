@@ -9,6 +9,7 @@ use App\Models\Plat;
 use App\Models\Quartier;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Carbon\Carbon;
 
 class CommandeSeeder extends Seeder
 {
@@ -25,7 +26,7 @@ class CommandeSeeder extends Seeder
         $moyensPaiement = MoyenPaiement::all();
         $quartiers = Quartier::all();
 
-        // Liste des statuts possibles (fixes pour l’exemple)
+        // Liste des statuts possibles
         $statutsCommande = ['en_attente', 'confirmee', 'prete', 'en_livraison', 'recuperee', 'annulee'];
 
         foreach ($restaurateurs as $index => $restaurateur) {
@@ -34,17 +35,26 @@ class CommandeSeeder extends Seeder
                 Plat::create([
                     'restaurateur_id' => $restaurateur->id,
                     'nom' => "Plat spécial $restaurateur->id - 1",
+                    'description' => "Description du plat spécial 1 du restaurateur $restaurateur->id",
                     'prix' => 5000,
+                    'date_disponibilite' => Carbon::tomorrow()->toDateString(),
+                    'temps_preparation' => 20,
                 ]),
                 Plat::create([
                     'restaurateur_id' => $restaurateur->id,
                     'nom' => "Plat spécial $restaurateur->id - 2",
+                    'description' => "Description du plat spécial 2 du restaurateur $restaurateur->id",
                     'prix' => 7500,
+                    'date_disponibilite' => Carbon::tomorrow()->toDateString(),
+                    'temps_preparation' => 30,
                 ]),
                 Plat::create([
                     'restaurateur_id' => $restaurateur->id,
                     'nom' => "Plat spécial $restaurateur->id - 3",
+                    'description' => "Description du plat spécial 3 du restaurateur $restaurateur->id",
                     'prix' => 10000,
+                    'date_disponibilite' => Carbon::tomorrow()->toDateString(),
+                    'temps_preparation' => 40,
                 ]),
             ]);
 
