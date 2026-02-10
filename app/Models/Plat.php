@@ -19,6 +19,8 @@ class Plat extends Model
         'date_disponibilite' => 'date',
         'approved_at' => 'datetime',
         'is_approved' => 'boolean',
+        'livraison_disponible' => 'boolean',
+        'retrait_disponible' => 'boolean',
     ];
 
     /**

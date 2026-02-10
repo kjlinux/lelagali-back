@@ -27,6 +27,8 @@ class PlatRequest extends FormRequest
             'approved_by' => 'nullable|uuid|exists:users,id',
             'approved_at' => 'nullable|date',
             'temps_preparation' => 'nullable|integer|min:1',
+            'livraison_disponible' => 'nullable|boolean',
+            'retrait_disponible' => 'nullable|boolean',
         ];
     }
 
@@ -55,6 +57,8 @@ class PlatRequest extends FormRequest
             'approved_by.exists' => 'L\'approbateur spécifié n\'existe pas.',
             'temps_preparation.integer' => 'Le temps de préparation doit être un nombre entier.',
             'temps_preparation.min' => 'Le temps de préparation doit être d\'au moins 1 minute.',
+            'livraison_disponible.boolean' => 'L\'option de livraison doit être vraie ou fausse.',
+            'retrait_disponible.boolean' => 'L\'option de retrait doit être vraie ou fausse.',
         ];
     }
 }

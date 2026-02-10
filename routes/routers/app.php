@@ -48,7 +48,17 @@ Route::prefix('app/commandes/{id}')->group(function () {
     // Accepter une commande
     Route::patch('/accept', function ($id) {
         $commande = \App\Models\Commande::findOrFail($id);
+        $oldStatus = $commande->status;
+
         if ($commande->accepter()) {
+            $commande->load(['client:id,name,email', 'restaurateur:id,name', 'moyenPaiement:id,nom', 'quartierLivraison:id,nom', 'items.plat:id,nom,prix']);
+
+            // Envoyer l'email au client
+            if ($commande->client->email) {
+                \Illuminate\Support\Facades\Mail::to($commande->client->email)
+                    ->send(new \App\Mail\OrderStatusChangedMail($commande, $oldStatus, 'confirmee'));
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Commande acceptée',
@@ -64,7 +74,17 @@ Route::prefix('app/commandes/{id}')->group(function () {
     // Marquer comme prête
     Route::patch('/ready', function ($id) {
         $commande = \App\Models\Commande::findOrFail($id);
+        $oldStatus = $commande->status;
+
         if ($commande->marquerPrete()) {
+            $commande->load(['client:id,name,email', 'restaurateur:id,name', 'moyenPaiement:id,nom', 'quartierLivraison:id,nom', 'items.plat:id,nom,prix']);
+
+            // Envoyer l'email au client
+            if ($commande->client->email) {
+                \Illuminate\Support\Facades\Mail::to($commande->client->email)
+                    ->send(new \App\Mail\OrderStatusChangedMail($commande, $oldStatus, 'prete'));
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Commande marquée comme prête',
@@ -80,7 +100,17 @@ Route::prefix('app/commandes/{id}')->group(function () {
     // Mettre en livraison
     Route::patch('/deliver', function ($id) {
         $commande = \App\Models\Commande::findOrFail($id);
+        $oldStatus = $commande->status;
+
         if ($commande->mettreEnLivraison()) {
+            $commande->load(['client:id,name,email', 'restaurateur:id,name', 'moyenPaiement:id,nom', 'quartierLivraison:id,nom', 'items.plat:id,nom,prix']);
+
+            // Envoyer l'email au client
+            if ($commande->client->email) {
+                \Illuminate\Support\Facades\Mail::to($commande->client->email)
+                    ->send(new \App\Mail\OrderStatusChangedMail($commande, $oldStatus, 'en_livraison'));
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Commande en cours de livraison',
@@ -96,7 +126,17 @@ Route::prefix('app/commandes/{id}')->group(function () {
     // Marquer comme récupérée/livrée
     Route::patch('/complete', function ($id) {
         $commande = \App\Models\Commande::findOrFail($id);
+        $oldStatus = $commande->status;
+
         if ($commande->marquerRecuperee()) {
+            $commande->load(['client:id,name,email', 'restaurateur:id,name', 'moyenPaiement:id,nom', 'quartierLivraison:id,nom', 'items.plat:id,nom,prix']);
+
+            // Envoyer l'email au client
+            if ($commande->client->email) {
+                \Illuminate\Support\Facades\Mail::to($commande->client->email)
+                    ->send(new \App\Mail\OrderStatusChangedMail($commande, $oldStatus, 'recuperee'));
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Commande terminée',
@@ -112,13 +152,23 @@ Route::prefix('app/commandes/{id}')->group(function () {
     // Annuler une commande
     Route::patch('/cancel', function (Request $request, $id) {
         $request->validate([
-            'raison' => 'sometimes|string|max:500'
+            'raison' => 'sometimes|string|max:500',
+            'cancelled_by' => 'sometimes|in:client,restaurant' // Identifier qui annule
         ]);
 
         $commande = \App\Models\Commande::findOrFail($id);
         $raison = $request->input('raison');
+        $cancelledBy = $request->input('cancelled_by', 'client');
 
         if ($commande->annuler($raison)) {
+            $commande->load(['client:id,name,email', 'restaurateur:id,name,email', 'moyenPaiement:id,nom', 'quartierLivraison:id,nom', 'items.plat:id,nom,prix']);
+
+            // Si annulée par le client, envoyer email au restaurant
+            if ($cancelledBy === 'client' && $commande->restaurateur->email) {
+                \Illuminate\Support\Facades\Mail::to($commande->restaurateur->email)
+                    ->send(new \App\Mail\OrderCancelledByClientMail($commande));
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Commande annulée',
@@ -153,6 +203,34 @@ Route::prefix('app/commandes/{id}')->group(function () {
             'success' => false,
             'message' => 'Impossible de confirmer le paiement'
         ], 400);
+    });
+
+    // Rejeter le paiement
+    Route::patch('/reject-payment', function (Request $request, $id) {
+        $request->validate([
+            'raison' => 'sometimes|string|max:500'
+        ]);
+
+        $commande = \App\Models\Commande::findOrFail($id);
+        $raison = $request->input('raison');
+
+        // Marquer le paiement comme non confirmé
+        $commande->status_paiement = false;
+        $commande->save();
+
+        $commande->load(['client:id,name,email', 'restaurateur:id,name', 'moyenPaiement:id,nom', 'quartierLivraison:id,nom', 'items.plat:id,nom,prix']);
+
+        // Envoyer l'email au client
+        if ($commande->client->email) {
+            \Illuminate\Support\Facades\Mail::to($commande->client->email)
+                ->send(new \App\Mail\PaymentRejectedMail($commande, $raison));
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Paiement rejeté',
+            'data' => $commande->fresh()
+        ]);
     });
 });
 
@@ -431,23 +509,31 @@ Route::patch('/notifications/mark-all-read', [NotificationCommandeController::cl
 Route::delete('/notifications/{id}', [NotificationCommandeController::class, 'destroy']);
 
 
+// Routes plats publiques (sans authentification)
 Route::get('plats', [PlatController::class, 'index']);
-Route::post('plats', [PlatController::class, 'store']);
-Route::put('plats/{plat}', [PlatController::class, 'update']);
-Route::delete('plats/{plat}', [PlatController::class, 'destroy']);
-Route::get('plats-trashed', [PlatController::class, 'trashed']);
-Route::post('plats/{plat}/restore', [PlatController::class, 'restore']);
-Route::put('plats/{plat}/approve', [PlatController::class, 'approve'])
-    ->name('plats.approve');
-Route::put('plats/{plat}/reject', [PlatController::class, 'reject'])
-    ->name('plats.reject');
-Route::get('plats-moderation', [PlatController::class, 'moderation'])
-    ->name('plats.moderation');
-Route::get('plats/today', [PlatController::class, 'todayMenus'])->name('plats.today');
-Route::get('plats/stats', [PlatController::class, 'getStats'])->name('plats.stats');
-Route::post('plats/bulk-update-status', [PlatController::class, 'bulkUpdateStatus'])->name('plats.bulk-status');
-Route::get('plats/restaurateur/{id}', [PlatController::class, 'getByRestaurateur'])->name('plats.by-restaurateur');
-Route::get('plats/{plat}', [PlatController::class, 'show']);
+
+// Routes plats protégées (avec authentification)
+// Route publique pour les menus du jour (clients)
+Route::get('plats/today', [PlatController::class, 'publicTodayMenus'])->name('plats.today.public');
+
+Route::middleware('auth:api')->group(function () {
+    // Routes spécifiques AVANT les routes avec paramètres {plat}
+    Route::get('plats-trashed', [PlatController::class, 'trashed']);
+    Route::get('plats-moderation', [PlatController::class, 'moderation'])->name('plats.moderation');
+    Route::get('plats/today-admin', [PlatController::class, 'todayMenus'])->name('plats.today');
+    Route::get('plats/stats', [PlatController::class, 'getStats'])->name('plats.stats');
+    Route::post('plats/bulk-update-status', [PlatController::class, 'bulkUpdateStatus'])->name('plats.bulk-status');
+    Route::get('plats/restaurateur/{id}', [PlatController::class, 'getByRestaurateur'])->name('plats.by-restaurateur');
+
+    // Routes CRUD avec paramètres
+    Route::post('plats', [PlatController::class, 'store']);
+    Route::get('plats/{plat}', [PlatController::class, 'show']);
+    Route::put('plats/{plat}', [PlatController::class, 'update']);
+    Route::delete('plats/{plat}', [PlatController::class, 'destroy']);
+    Route::post('plats/{plat}/restore', [PlatController::class, 'restore']);
+    Route::put('plats/{plat}/approve', [PlatController::class, 'approve'])->name('plats.approve');
+    Route::put('plats/{plat}/reject', [PlatController::class, 'reject'])->name('plats.reject');
+});
 
 // Routes des moyens de paiement des restaurateurs
 Route::get('restaurateur-moyen-paiements', [RestaurateurMoyenPaiementController::class, 'index']);

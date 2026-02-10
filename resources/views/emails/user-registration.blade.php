@@ -77,7 +77,10 @@
             <p>Nous sommes ravis de vous accueillir sur Lelagali. Voici vos identifiants de connexion :</p>
 
             <div class="credentials">
+                <p><strong>Email :</strong> {{ $user->email }}</p>
+                @if($user->phone)
                 <p><strong>Téléphone :</strong> {{ $user->phone }}</p>
+                @endif
                 <p><strong>Mot de passe :</strong> {{ $password }}</p>
             </div>
 

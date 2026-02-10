@@ -54,7 +54,7 @@ class RestaurateurMoyenPaiementRequest extends FormRequest
             $rules['moyen_paiement_id'] = 'required|uuid|exists:moyen_paiements,id';
 
             // ✅ Vérifier l'unicité pour les créations seulement
-            $rules['restaurateur_id'] = $rules['restaurateur_id'] . '|unique:restaurateur_moyen_paiements,restaurateur_id,NULL,id,moyen_paiement_id,' . ($this->input('moyen_paiement_id') ?? 'NULL');
+            $rules['restaurateur_id'] = $rules['restaurateur_id'] . '|unique:restaurateur_moyens_paiement,restaurateur_id,NULL,id,moyen_paiement_id,' . ($this->input('moyen_paiement_id') ?? 'NULL');
         }
 
         return $rules;

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\UserCredentialsUpdateMail;
+use App\Mail\UserSuspendedMail;
 
 class UserController extends Controller
 {
@@ -91,6 +92,31 @@ class UserController extends Controller
                 'data' => $user,
                 'token' => JWTAuth::fromUser($user)
             ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+
+            // Extraire les erreurs de validation
+            $errors = $e->validator->errors();
+            $message = 'Erreur de validation';
+
+            // Personnaliser le message selon le champ en erreur
+            if ($errors->has('email')) {
+                $message = 'Cette adresse email est déjà utilisée';
+            } elseif ($errors->has('phone')) {
+                $message = 'Ce numéro de téléphone est déjà utilisé';
+            } elseif ($errors->has('email') && $errors->has('phone')) {
+                $message = 'Cette adresse email et ce numéro de téléphone sont déjà utilisés';
+            } else {
+                // Prendre le premier message d'erreur
+                $message = $errors->first();
+            }
+
+            return response()->json([
+                'status' => 'error',
+                'code' => 422,
+                'message' => $message,
+                'errors' => $errors
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -118,6 +144,14 @@ class UserController extends Controller
                 'active' => 'sometimes|boolean',
             ]);
 
+            // Détecter la suspension (changement de active: true → false)
+            $wasSuspended = false;
+            $suspensionRaison = null;
+            if ($request->has('active') && $user->active && !$request->active) {
+                $wasSuspended = true;
+                $suspensionRaison = $request->input('raison_suspension');
+            }
+
             if ($request->has('name')) $user->name = $request->name;
             if ($request->has('email')) $user->email = $request->email;
             if ($request->has('phone')) $user->phone = $request->phone;
@@ -129,6 +163,18 @@ class UserController extends Controller
 
             $passToEmail = null;
             if ($request->has('password') && !empty($request->password)) {
+                // Si current_password est fourni, le vérifier
+                if ($request->has('current_password')) {
+                    if (!Hash::check($request->current_password, $user->password)) {
+                        DB::rollBack();
+                        return response()->json([
+                            'status' => 'error',
+                            'code' => 400,
+                            'message' => 'Le mot de passe actuel est incorrect'
+                        ], 400);
+                    }
+                }
+
                 $user->password = Hash::make($request->password);
                 $passToEmail = $request->password;
             }
@@ -143,6 +189,11 @@ class UserController extends Controller
             // Envoyer l'email si le mot de passe a été modifié
             if ($passToEmail && $user->email) {
                 Mail::to($user->email)->send(new UserCredentialsUpdateMail($user, $passToEmail));
+            }
+
+            // Envoyer l'email si l'utilisateur a été suspendu
+            if ($wasSuspended && $user->email) {
+                Mail::to($user->email)->send(new UserSuspendedMail($user, $suspensionRaison));
             }
 
             return response()->json([

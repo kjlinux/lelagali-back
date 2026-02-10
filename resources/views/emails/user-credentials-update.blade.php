@@ -84,7 +84,10 @@
             <p>Votre mot de passe a été mis à jour. Voici vos nouveaux identifiants de connexion :</p>
 
             <div class="credentials">
-                <p><strong>Email/Téléphone :</strong> {{ $user->email ?: $user->phone }}</p>
+                <p><strong>Email :</strong> {{ $user->email }}</p>
+                @if($user->phone)
+                <p><strong>Téléphone :</strong> {{ $user->phone }}</p>
+                @endif
                 <p><strong>Nouveau mot de passe :</strong> {{ $password }}</p>
             </div>
 

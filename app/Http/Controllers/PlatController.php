@@ -10,8 +10,11 @@ use App\Http\Requests\PlatRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
 use App\Models\Commande;
 use App\Helpers\StorageHelper;
+use App\Mail\PlatApprovedMail;
+use App\Mail\PlatRejectedMail;
 
 class PlatController extends Controller
 {
@@ -187,7 +190,12 @@ class PlatController extends Controller
                 'approved_at' => now()
             ]);
 
-            $plat->load('restaurateur:id,name');
+            $plat->load('restaurateur:id,name,email');
+
+            // Envoyer l'email au restaurateur si email disponible
+            if ($plat->restaurateur->email) {
+                Mail::to($plat->restaurateur->email)->send(new PlatApprovedMail($plat));
+            }
 
             return response()->json([
                 'status' => 'success',
@@ -227,13 +235,21 @@ class PlatController extends Controller
                 ], 200);
             }
 
+            // Récupérer la raison du rejet (optionnelle)
+            $raison = $request->input('raison');
+
             $plat->update([
                 'is_approved' => false,
                 'approved_by' => $user->id,
                 'approved_at' => now()
             ]);
 
-            $plat->load('restaurateur:id,name');
+            $plat->load('restaurateur:id,name,email');
+
+            // Envoyer l'email au restaurateur si email disponible
+            if ($plat->restaurateur->email) {
+                Mail::to($plat->restaurateur->email)->send(new PlatRejectedMail($plat, $raison));
+            }
 
             return response()->json([
                 'status' => 'success',
@@ -256,15 +272,21 @@ public function todayMenus(Request $request)
 {
     $user = $request->user();
 
-    if ($user->role !== 'restaurateur') {
+    // Autoriser les restaurateurs et les admins
+    if (!in_array($user->role, ['restaurateur', 'admin'])) {
         return response()->json(['error' => 'Accès non autorisé'], 403);
     }
 
     $today = Carbon::today();
 
-    $menus = Plat::where('restaurateur_id', $user->id)
-        ->where('date_disponibilite', $today)
-        ->withCount(['commandeItems as commandes_count' => function ($query) {
+    // Si admin, récupérer tous les plats du jour, sinon seulement ceux du restaurateur
+    $query = Plat::where('date_disponibilite', $today);
+
+    if ($user->role === 'restaurateur') {
+        $query->where('restaurateur_id', $user->id);
+    }
+
+    $menus = $query->withCount(['commandeItems as commandes_count' => function ($query) {
             $query->whereDate('created_at', Carbon::today());
         }])
         ->get()
@@ -276,14 +298,57 @@ public function todayMenus(Request $request)
                 'prix' => $plat->prix,
                 'quantite' => $plat->quantite_disponible,
                 'quantite_vendue' => $plat->quantite_vendue ?? 0,
-                'image' => $plat->image ? Storage::url($plat->image) : '/default-menu.jpg',
+                'image' => $plat->image_url ?? '/default-menu.jpg',
                 'statut' => $this->getMenuStatus($plat),
                 'categorie' => 'Menu du jour',
                 'temps_preparation' => $plat->temps_preparation,
-                'commandes' => $plat->commandes_count, // Utilise le count optimisé
+                'commandes' => $plat->commandes_count,
                 'note' => rand(40, 50) / 10,
                 'created_at' => $plat->created_at,
                 'updated_at' => $plat->updated_at,
+            ];
+        });
+
+    return response()->json([
+        'success' => true,
+        'data' => $menus
+    ]);
+}
+
+/**
+ * Récupérer les menus du jour (version publique pour les clients)
+ */
+public function publicTodayMenus(Request $request)
+{
+    $today = Carbon::today();
+
+    $menus = Plat::where('date_disponibilite', $today)
+        ->where('quantite_disponible', '>', 0)
+        ->with(['restaurateur.quartier'])
+        ->get()
+        ->map(function ($plat) {
+            return [
+                'id' => $plat->id,
+                'nom' => $plat->nom,
+                'description' => $plat->description,
+                'prix' => $plat->prix,
+                'quantite_disponible' => $plat->quantite_disponible,
+                'image_url' => $plat->image_url ?? '/default-menu.jpg',
+                'type_plat' => $plat->type_plat,
+                'temps_preparation' => $plat->temps_preparation,
+                'ingredients' => $plat->ingredients,
+                'livraison_disponible' => $plat->livraison_disponible ?? false,
+                'note_moyenne' => $plat->note_moyenne ?? 4.5,
+                'nombre_avis' => $plat->nombre_avis ?? 0,
+                'restaurateur_id' => $plat->restaurateur_id,
+                'restaurateur' => $plat->restaurateur ? [
+                    'id' => $plat->restaurateur->id,
+                    'nom' => $plat->restaurateur->name,
+                    'quartier' => $plat->restaurateur->quartier ? [
+                        'id' => $plat->restaurateur->quartier->id,
+                        'nom' => $plat->restaurateur->quartier->nom
+                    ] : null
+                ] : null
             ];
         });
 
@@ -300,7 +365,8 @@ public function todayMenus(Request $request)
     {
         $user = $request->user();
 
-        if ($user->role !== 'restaurateur') {
+        // Autoriser les restaurateurs et les admins
+        if (!in_array($user->role, ['restaurateur', 'admin'])) {
             return response()->json(['error' => 'Accès non autorisé'], 403);
         }
 
@@ -308,30 +374,46 @@ public function todayMenus(Request $request)
         $startOfWeek = Carbon::now()->startOfWeek();
         $endOfWeek = Carbon::now()->endOfWeek();
 
-        // Statistiques des menus
-        $activeMenusToday = Plat::where('restaurateur_id', $user->id)
-            ->where('date_disponibilite', $today)
-            ->where('quantite_disponible', '>', 0)
-            ->count();
+        // Statistiques des menus - Si admin, tous les plats, sinon seulement ceux du restaurateur
+        $platsQuery = Plat::where('date_disponibilite', $today)
+            ->where('quantite_disponible', '>', 0);
+
+        if ($user->role === 'restaurateur') {
+            $platsQuery->where('restaurateur_id', $user->id);
+        }
+
+        $activeMenusToday = $platsQuery->count();
 
         // Commandes du jour
-        $todayOrdersCount = Commande::where('restaurateur_id', $user->id)
-            ->whereDate('created_at', $today)
-            ->count();
+        $commandesQuery = Commande::whereDate('created_at', $today);
+
+        if ($user->role === 'restaurateur') {
+            $commandesQuery->where('restaurateur_id', $user->id);
+        }
+
+        $todayOrdersCount = $commandesQuery->count();
 
         // Revenus de la semaine
-        $weeklyRevenue = Commande::where('restaurateur_id', $user->id)
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->where('status_paiement', true)
-            ->sum('total_general');
+        $revenueQuery = Commande::whereBetween('created_at', [$startOfWeek, $endOfWeek])
+            ->where('status_paiement', true);
+
+        if ($user->role === 'restaurateur') {
+            $revenueQuery->where('restaurateur_id', $user->id);
+        }
+
+        $weeklyRevenue = $revenueQuery->sum('total_general');
 
         // Données pour le graphique (derniers 7 jours)
         $chartData = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
-            $orders = Commande::where('restaurateur_id', $user->id)
-                ->whereDate('created_at', $date)
-                ->count();
+            $ordersQuery = Commande::whereDate('created_at', $date);
+
+            if ($user->role === 'restaurateur') {
+                $ordersQuery->where('restaurateur_id', $user->id);
+            }
+
+            $orders = $ordersQuery->count();
 
             $chartData[] = [
                 'date' => $date->format('d/m'),
@@ -363,7 +445,7 @@ public function todayMenus(Request $request)
             'description' => 'required|string',
             'prix' => 'required|integer|min:0',
             'quantite_disponible' => 'required|integer|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:15360',
             'temps_preparation' => 'nullable|integer|min:0',
             'date_disponibilite' => 'nullable|date'
         ]);
@@ -376,7 +458,7 @@ public function todayMenus(Request $request)
 
         $data = $request->all();
         $data['restaurateur_id'] = $user->id;
-        $data['date_disponibilite'] = $request->date_disponibilite ?? Carbon::tomorrow();
+        $data['date_disponibilite'] = $request->date_disponibilite ?? Carbon::today();
 
         // Gestion de l'upload d'image vers S3
         if ($request->hasFile('image')) {
@@ -410,7 +492,7 @@ public function todayMenus(Request $request)
             'description' => 'sometimes|required|string',
             'prix' => 'sometimes|required|integer|min:0',
             'quantite_disponible' => 'sometimes|required|integer|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:15360',
             'temps_preparation' => 'nullable|integer|min:0'
         ]);
 

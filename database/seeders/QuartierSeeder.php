@@ -15,21 +15,38 @@ class QuartierSeeder extends Seeder
     {
         $adminId = DB::table('users')->where('role', 'admin')->first()->id;
 
-        DB::table('quartiers')->insert([
-            [
+        // Quartiers populaires de Ouagadougou
+        $quartiers = [
+            'Ouaga 2000',
+            'Gounghin',
+            'Dapoya',
+            'Cissin',
+            'Zone du Bois',
+            'Secteur 4',
+            'Secteur 15',
+            'Secteur 30',
+            'Kalgondin',
+            'Tanghin',
+            'Paspanga',
+            'Somgandé',
+            'Pissy',
+            'Koulouba',
+            'Tampouy',
+            'Samandin',
+            'Balkuy',
+            'Bogodogo',
+            'Baskuy',
+            'Sig-Noghin'
+        ];
+
+        foreach ($quartiers as $quartier) {
+            DB::table('quartiers')->insert([
                 'id' => Str::uuid(),
-                'nom' => 'Quartier Central',
+                'nom' => $quartier,
                 'created_by' => $adminId,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ],
-            [
-                'id' => Str::uuid(),
-                'nom' => 'Quartier Nord',
-                'created_by' => $adminId,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        ]);
+            ]);
+        }
     }
 }
