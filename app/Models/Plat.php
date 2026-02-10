@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\StorageHelper;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +20,20 @@ class Plat extends Model
         'approved_at' => 'datetime',
         'is_approved' => 'boolean',
     ];
+
+    /**
+     * Ajouter l'URL complète de l'image lors de la sérialisation
+     */
+    protected $appends = ['image_url'];
+
+    /**
+     * Obtenir l'URL complète de l'image
+     * Fonctionne avec S3 ou local storage
+     */
+    public function getImageUrlAttribute(): ?string
+    {
+        return StorageHelper::getUrl($this->image);
+    }
 
     public function restaurateur()
     {

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Commande;
+use App\Helpers\StorageHelper;
 
 class PlatController extends Controller
 {
@@ -377,9 +378,9 @@ public function todayMenus(Request $request)
         $data['restaurateur_id'] = $user->id;
         $data['date_disponibilite'] = $request->date_disponibilite ?? Carbon::tomorrow();
 
-        // Gestion de l'upload d'image
+        // Gestion de l'upload d'image vers S3
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('menus', 'public');
+            $imagePath = StorageHelper::storeImage($request->file('image'), 'menus');
             $data['image'] = $imagePath;
         }
 
@@ -415,14 +416,14 @@ public function todayMenus(Request $request)
 
         $data = $request->only(['nom', 'description', 'prix', 'quantite_disponible', 'temps_preparation']);
 
-        // Gestion de l'upload d'image
+        // Gestion de l'upload d'image vers S3
         if ($request->hasFile('image')) {
-            // Supprimer l'ancienne image
+            // Supprimer l'ancienne image de S3
             if ($plat->image) {
-                Storage::disk('public')->delete($plat->image);
+                StorageHelper::delete($plat->image);
             }
 
-            $imagePath = $request->file('image')->store('menus', 'public');
+            $imagePath = StorageHelper::storeImage($request->file('image'), 'menus');
             $data['image'] = $imagePath;
         }
 
