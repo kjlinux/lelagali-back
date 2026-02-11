@@ -14,6 +14,7 @@ class Commande extends Model
 
     protected $casts = [
         'status_paiement' => 'boolean',
+        'paiement_rejete' => 'boolean',
         'temps_preparation_estime' => 'integer',
         'total_plats' => 'integer',
         'frais_livraison' => 'integer',
@@ -296,8 +297,17 @@ class Commande extends Model
 
     private function calculerFraisLivraison(): int
     {
-        // Logique de calcul des frais de livraison
-        // Peut être basée sur le quartier, la distance, etc.
-        return 500; // Frais fixes pour l'exemple
+        // Si pas de quartier de livraison, pas de frais
+        if (!$this->quartier_livraison_id || !$this->restaurateur_id) {
+            return 0;
+        }
+
+        // Rechercher le tarif configuré pour ce restaurateur et ce quartier
+        $tarif = TarifLivraison::where('restaurateur_id', $this->restaurateur_id)
+            ->where('quartier_id', $this->quartier_livraison_id)
+            ->first();
+
+        // Si un tarif est trouvé, l'utiliser, sinon retourner 0 (pas de livraison disponible)
+        return $tarif ? $tarif->prix : 0;
     }
 }

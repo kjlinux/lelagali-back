@@ -44,7 +44,13 @@ Route::prefix('app/commandes')->group(function () {
 });
 
 // Routes spécifiques pour les actions sur les commandes
-Route::prefix('app/commandes/{id}')->group(function () {
+Route::prefix('commandes/{id}')->group(function () {
+    // Confirmer le paiement d'une commande
+    Route::patch('/confirmer-paiement', [CommandeController::class, 'confirmerPaiement']);
+
+    // Rejeter le paiement d'une commande
+    Route::post('/rejeter-paiement', [CommandeController::class, 'rejeterPaiement']);
+
     // Accepter une commande
     Route::patch('/accept', function ($id) {
         $commande = \App\Models\Commande::findOrFail($id);
@@ -53,10 +59,13 @@ Route::prefix('app/commandes/{id}')->group(function () {
         if ($commande->accepter()) {
             $commande->load(['client:id,name,email', 'restaurateur:id,name', 'moyenPaiement:id,nom', 'quartierLivraison:id,nom', 'items.plat:id,nom,prix']);
 
-            // Envoyer l'email au client
-            if ($commande->client->email) {
-                \Illuminate\Support\Facades\Mail::to($commande->client->email)
-                    ->send(new \App\Mail\OrderStatusChangedMail($commande, $oldStatus, 'confirmee'));
+            try {
+                if ($commande->client->email) {
+                    \Illuminate\Support\Facades\Mail::to($commande->client->email)
+                        ->send(new \App\Mail\OrderStatusChangedMail($commande, $oldStatus, 'confirmee'));
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Erreur envoi email statut confirmee pour ' . $commande->numero_commande . ': ' . $e->getMessage());
             }
 
             return response()->json([
@@ -79,10 +88,13 @@ Route::prefix('app/commandes/{id}')->group(function () {
         if ($commande->marquerPrete()) {
             $commande->load(['client:id,name,email', 'restaurateur:id,name', 'moyenPaiement:id,nom', 'quartierLivraison:id,nom', 'items.plat:id,nom,prix']);
 
-            // Envoyer l'email au client
-            if ($commande->client->email) {
-                \Illuminate\Support\Facades\Mail::to($commande->client->email)
-                    ->send(new \App\Mail\OrderStatusChangedMail($commande, $oldStatus, 'prete'));
+            try {
+                if ($commande->client->email) {
+                    \Illuminate\Support\Facades\Mail::to($commande->client->email)
+                        ->send(new \App\Mail\OrderStatusChangedMail($commande, $oldStatus, 'prete'));
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Erreur envoi email statut prete pour ' . $commande->numero_commande . ': ' . $e->getMessage());
             }
 
             return response()->json([
@@ -105,10 +117,13 @@ Route::prefix('app/commandes/{id}')->group(function () {
         if ($commande->mettreEnLivraison()) {
             $commande->load(['client:id,name,email', 'restaurateur:id,name', 'moyenPaiement:id,nom', 'quartierLivraison:id,nom', 'items.plat:id,nom,prix']);
 
-            // Envoyer l'email au client
-            if ($commande->client->email) {
-                \Illuminate\Support\Facades\Mail::to($commande->client->email)
-                    ->send(new \App\Mail\OrderStatusChangedMail($commande, $oldStatus, 'en_livraison'));
+            try {
+                if ($commande->client->email) {
+                    \Illuminate\Support\Facades\Mail::to($commande->client->email)
+                        ->send(new \App\Mail\OrderStatusChangedMail($commande, $oldStatus, 'en_livraison'));
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Erreur envoi email statut en_livraison pour ' . $commande->numero_commande . ': ' . $e->getMessage());
             }
 
             return response()->json([
@@ -131,10 +146,13 @@ Route::prefix('app/commandes/{id}')->group(function () {
         if ($commande->marquerRecuperee()) {
             $commande->load(['client:id,name,email', 'restaurateur:id,name', 'moyenPaiement:id,nom', 'quartierLivraison:id,nom', 'items.plat:id,nom,prix']);
 
-            // Envoyer l'email au client
-            if ($commande->client->email) {
-                \Illuminate\Support\Facades\Mail::to($commande->client->email)
-                    ->send(new \App\Mail\OrderStatusChangedMail($commande, $oldStatus, 'recuperee'));
+            try {
+                if ($commande->client->email) {
+                    \Illuminate\Support\Facades\Mail::to($commande->client->email)
+                        ->send(new \App\Mail\OrderStatusChangedMail($commande, $oldStatus, 'recuperee'));
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Erreur envoi email statut recuperee pour ' . $commande->numero_commande . ': ' . $e->getMessage());
             }
 
             return response()->json([
@@ -517,22 +535,28 @@ Route::get('plats', [PlatController::class, 'index']);
 Route::get('plats/today', [PlatController::class, 'publicTodayMenus'])->name('plats.today.public');
 
 Route::middleware('auth:api')->group(function () {
-    // Routes spécifiques AVANT les routes avec paramètres {plat}
-    Route::get('plats-trashed', [PlatController::class, 'trashed']);
-    Route::get('plats-moderation', [PlatController::class, 'moderation'])->name('plats.moderation');
-    Route::get('plats/today-admin', [PlatController::class, 'todayMenus'])->name('plats.today');
-    Route::get('plats/stats', [PlatController::class, 'getStats'])->name('plats.stats');
-    Route::post('plats/bulk-update-status', [PlatController::class, 'bulkUpdateStatus'])->name('plats.bulk-status');
-    Route::get('plats/restaurateur/{id}', [PlatController::class, 'getByRestaurateur'])->name('plats.by-restaurateur');
+    // Routes admin uniquement - Modération et statistiques
+    Route::middleware('role:admin')->group(function () {
+        Route::get('plats-moderation', [PlatController::class, 'moderation'])->name('plats.moderation');
+        Route::put('plats/{plat}/approve', [PlatController::class, 'approve'])->name('plats.approve');
+        Route::put('plats/{plat}/reject', [PlatController::class, 'reject'])->name('plats.reject');
+        Route::get('plats-trashed', [PlatController::class, 'trashed']);
+        Route::post('plats/{plat}/restore', [PlatController::class, 'restore']);
+    });
 
-    // Routes CRUD avec paramètres
-    Route::post('plats', [PlatController::class, 'store']);
+    // Routes restaurateur - Gestion des plats
+    Route::middleware('role:restaurateur,admin')->group(function () {
+        Route::post('plats', [PlatController::class, 'store']);
+        Route::put('plats/{plat}', [PlatController::class, 'update']);
+        Route::delete('plats/{plat}', [PlatController::class, 'destroy']);
+        Route::get('plats/today-admin', [PlatController::class, 'todayMenus'])->name('plats.today');
+        Route::get('plats/stats', [PlatController::class, 'getStats'])->name('plats.stats');
+        Route::post('plats/bulk-update-status', [PlatController::class, 'bulkUpdateStatus'])->name('plats.bulk-status');
+        Route::get('plats/restaurateur/{id}', [PlatController::class, 'getByRestaurateur'])->name('plats.by-restaurateur');
+    });
+
+    // Routes accessibles par tous les utilisateurs authentifiés
     Route::get('plats/{plat}', [PlatController::class, 'show']);
-    Route::put('plats/{plat}', [PlatController::class, 'update']);
-    Route::delete('plats/{plat}', [PlatController::class, 'destroy']);
-    Route::post('plats/{plat}/restore', [PlatController::class, 'restore']);
-    Route::put('plats/{plat}/approve', [PlatController::class, 'approve'])->name('plats.approve');
-    Route::put('plats/{plat}/reject', [PlatController::class, 'reject'])->name('plats.reject');
 });
 
 // Routes des moyens de paiement des restaurateurs

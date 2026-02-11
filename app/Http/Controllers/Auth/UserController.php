@@ -334,10 +334,20 @@ class UserController extends Controller
 
     public function profile(): JsonResponse
     {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'code' => 401,
+                'message' => 'Non authentifié'
+            ], 401);
+        }
+
         return response()->json([
             'status' => 'success',
             'code' => 200,
-            'data' => Auth::user()->load(['quartier'])
+            'data' => $user->load(['quartier'])
         ]);
     }
 
@@ -477,13 +487,18 @@ class UserController extends Controller
 
     protected function respondWithToken(string $token): JsonResponse
     {
+        $user = Auth::user();
+        $user->load(['quartier']);
+
         return response()->json([
             'status' => 'success',
             'code' => 200,
             'access_token' => $token,
             'token_type' => 'bearer',
             'expires_in' => Auth::factory()->getTTL() * 60,
-            'profile' => Auth::user()->load(['quartier'])
+            'profile' => $user,
+            'roles' => [$user->role], // Retourne le rôle de l'utilisateur
+            'permissions' => [] // Pour une future expansion si nécessaire
         ]);
     }
 }

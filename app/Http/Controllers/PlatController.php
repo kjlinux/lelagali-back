@@ -324,7 +324,16 @@ public function publicTodayMenus(Request $request)
 
     $menus = Plat::where('date_disponibilite', $today)
         ->where('quantite_disponible', '>', 0)
-        ->with(['restaurateur.quartier'])
+        ->where('is_approved', true)
+        ->with([
+            'restaurateur.quartier',
+            'restaurateur.restaurateurMoyensPaiement' => function($query) {
+                $query->whereNull('deleted_at')->with('moyenPaiement');
+            },
+            'restaurateur.tarifLivraisons' => function($query) {
+                $query->whereNull('deleted_at')->with('quartier');
+            }
+        ])
         ->get()
         ->map(function ($plat) {
             return [
@@ -338,16 +347,40 @@ public function publicTodayMenus(Request $request)
                 'temps_preparation' => $plat->temps_preparation,
                 'ingredients' => $plat->ingredients,
                 'livraison_disponible' => $plat->livraison_disponible ?? false,
+                'retrait_disponible' => $plat->retrait_disponible ?? true,
                 'note_moyenne' => $plat->note_moyenne ?? 4.5,
                 'nombre_avis' => $plat->nombre_avis ?? 0,
                 'restaurateur_id' => $plat->restaurateur_id,
                 'restaurateur' => $plat->restaurateur ? [
                     'id' => $plat->restaurateur->id,
                     'nom' => $plat->restaurateur->name,
+                    'email' => $plat->restaurateur->email,
+                    'phone' => $plat->restaurateur->phone,
                     'quartier' => $plat->restaurateur->quartier ? [
                         'id' => $plat->restaurateur->quartier->id,
                         'nom' => $plat->restaurateur->quartier->nom
-                    ] : null
+                    ] : null,
+                    'moyens_paiement' => $plat->restaurateur->restaurateurMoyensPaiement
+                        ->map(function ($rmp) {
+                            return [
+                                'id' => $rmp->moyen_paiement_id,
+                                'nom' => $rmp->moyenPaiement->nom,
+                                'icon' => $rmp->moyenPaiement->icon ?? null,
+                                'code' => $rmp->moyenPaiement->code ?? null,
+                                'numero_compte' => $rmp->numero_compte,
+                                'nom_titulaire' => $rmp->nom_titulaire,
+                                'type_paiement' => $rmp->payment_type
+                            ];
+                        })->values(),
+                    'zones_livraison' => $plat->restaurateur->tarifLivraisons
+                        ->map(function ($tarif) {
+                            return [
+                                'quartier_id' => $tarif->quartier_id,
+                                'quartier_nom' => $tarif->quartier->nom ?? null,
+                                'prix' => $tarif->prix
+                            ];
+                        })->values(),
+                    'livraison_disponible' => $plat->restaurateur->tarifLivraisons->isNotEmpty()
                 ] : null
             ];
         });
@@ -421,6 +454,22 @@ public function publicTodayMenus(Request $request)
             ];
         }
 
+        // Plats les plus vendus (top 5)
+        $bestSellersQuery = \App\Models\CommandeItem::join('commandes', 'commande_items.commande_id', '=', 'commandes.id')
+            ->join('plats', 'commande_items.plat_id', '=', 'plats.id')
+            ->whereIn('commandes.status', ['confirmee', 'prete', 'en_livraison', 'recuperee']);
+
+        if ($user->role === 'restaurateur') {
+            $bestSellersQuery->where('commandes.restaurateur_id', $user->id);
+        }
+
+        $bestSellers = $bestSellersQuery
+            ->select('plats.nom', DB::raw('SUM(commande_items.quantite) as total_vendu'))
+            ->groupBy('plats.id', 'plats.nom')
+            ->orderByDesc('total_vendu')
+            ->limit(5)
+            ->get();
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -430,7 +479,8 @@ public function publicTodayMenus(Request $request)
                     'weeklyRevenue' => $weeklyRevenue,
                     'averageRating' => 4.2 // À implémenter avec un vrai système de notation
                 ],
-                'chartData' => $chartData
+                'chartData' => $chartData,
+                'bestSellers' => $bestSellers
             ]
         ]);
     }

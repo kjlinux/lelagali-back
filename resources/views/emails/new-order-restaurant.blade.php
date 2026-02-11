@@ -220,6 +220,20 @@
                     <span class="detail-value">{{ $commande->moyenPaiement->nom }}</span>
                 </div>
 
+                @if($commande->reference_paiement)
+                <div class="detail-row">
+                    <span class="detail-label">Référence de paiement :</span>
+                    <span class="detail-value"><strong class="highlight">{{ $commande->reference_paiement }}</strong></span>
+                </div>
+                @endif
+
+                @if($commande->numero_paiement)
+                <div class="detail-row">
+                    <span class="detail-label">Numéro de paiement :</span>
+                    <span class="detail-value"><strong class="highlight">{{ $commande->numero_paiement }}</strong></span>
+                </div>
+                @endif
+
                 @if($commande->notes_client)
                 <div class="detail-row">
                     <span class="detail-label">Notes du client :</span>

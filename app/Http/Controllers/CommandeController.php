@@ -139,11 +139,41 @@ class CommandeController extends Controller
                 'adresse_livraison' => 'required_if:type_service,livraison|nullable|string',
                 'quartier_livraison_id' => 'required_if:type_service,livraison|nullable|uuid|exists:quartiers,id',
                 'notes_client' => 'nullable|string',
+                'reference_paiement' => 'nullable|string|max:255',
+                'numero_paiement' => 'nullable|string|max:50',
                 'items' => 'required|array|min:1',
                 'items.*.plat_id' => 'required|uuid|exists:plats,id',
                 'items.*.quantite' => 'required|integer|min:1',
                 'items.*.prix_unitaire' => 'required|integer|min:0'
             ]);
+
+            // Validation : Vérifier que le moyen de paiement est configuré pour ce restaurateur
+            $restaurateurMoyenPaiement = \App\Models\RestaurateurMoyenPaiement::where('restaurateur_id', $validated['restaurateur_id'])
+                ->where('moyen_paiement_id', $validated['moyen_paiement_id'])
+                ->whereNull('deleted_at')
+                ->first();
+
+            if (!$restaurateurMoyenPaiement) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce moyen de paiement n\'est pas accepté par ce restaurateur'
+                ], 400);
+            }
+
+            // Validation : Si livraison, vérifier que le restaurateur livre dans ce quartier
+            if ($validated['type_service'] === 'livraison') {
+                $tarifLivraison = \App\Models\TarifLivraison::where('restaurateur_id', $validated['restaurateur_id'])
+                    ->where('quartier_id', $validated['quartier_livraison_id'])
+                    ->whereNull('deleted_at')
+                    ->first();
+
+                if (!$tarifLivraison) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ce restaurateur ne livre pas dans ce quartier'
+                    ], 400);
+                }
+            }
 
             // Créer la commande
             $commande = Commande::create([
@@ -154,8 +184,10 @@ class CommandeController extends Controller
                 'adresse_livraison' => $validated['adresse_livraison'] ?? null,
                 'quartier_livraison_id' => $validated['quartier_livraison_id'] ?? null,
                 'notes_client' => $validated['notes_client'] ?? null,
+                'reference_paiement' => $validated['reference_paiement'] ?? null,
+                'numero_paiement' => $validated['numero_paiement'] ?? null,
                 'status' => 'en_attente',
-                'status_paiement' => false,
+                'status_paiement' => true,
                 'total_plats' => 0,
                 'frais_livraison' => 0,
                 'total_general' => 0
@@ -192,14 +224,19 @@ class CommandeController extends Controller
 
             DB::commit();
 
-            // Envoyer l'email au restaurateur
-            if ($commande->restaurateur->email) {
-                Mail::to($commande->restaurateur->email)->send(new NewOrderRestaurantMail($commande));
-            }
+            // Envoyer l'email au restaurateur (en mode non-bloquant)
+            try {
+                if ($commande->restaurateur->email) {
+                    Mail::to($commande->restaurateur->email)->send(new NewOrderRestaurantMail($commande));
+                }
 
-            // Envoyer l'email de confirmation au client
-            if ($commande->client->email) {
-                Mail::to($commande->client->email)->send(new OrderConfirmationMail($commande));
+                // Envoyer l'email de confirmation au client
+                if ($commande->client->email) {
+                    Mail::to($commande->client->email)->send(new OrderConfirmationMail($commande));
+                }
+            } catch (\Exception $mailException) {
+                // Logger l'erreur mais ne pas bloquer la création de commande
+                Log::warning('Erreur envoi email pour commande ' . $commande->numero_commande . ': ' . $mailException->getMessage());
             }
 
             return response()->json([
@@ -242,6 +279,83 @@ class CommandeController extends Controller
             ]);
         } catch (Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur mise à jour', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function confirmerPaiement($id)
+    {
+        try {
+            $commande = Commande::with([
+                'client:id,name,email',
+                'restaurateur:id,name',
+                'moyenPaiement:id,nom'
+            ])->findOrFail($id);
+
+            $commande->update([
+                'status_paiement' => true,
+                'paiement_rejete' => false,
+                'raison_rejet_paiement' => null
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $commande->fresh(),
+                'message' => 'Paiement confirmé avec succès'
+            ]);
+        } catch (Exception $e) {
+            Log::error('Erreur lors de la confirmation du paiement: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la confirmation du paiement',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function rejeterPaiement(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'raison' => 'nullable|string|max:500'
+            ]);
+
+            $commande = Commande::with([
+                'client:id,name,email,phone',
+                'restaurateur:id,name,phone',
+                'moyenPaiement:id,nom',
+                'items.plat:id,nom,prix'
+            ])->findOrFail($id);
+
+            // Marquer le paiement comme rejeté (la commande reste active mais bloquée)
+            $commande->update([
+                'status_paiement' => false,
+                'paiement_rejete' => true,
+                'raison_rejet_paiement' => $validated['raison'] ?? null
+            ]);
+
+            // Envoyer l'email au client
+            try {
+                if ($commande->client->email) {
+                    Mail::to($commande->client->email)->send(
+                        new \App\Mail\PaymentRejectedMail($commande, $validated['raison'] ?? null)
+                    );
+                }
+            } catch (\Exception $mailException) {
+                Log::warning('Erreur envoi email de rejet pour commande ' . $commande->numero_commande . ': ' . $mailException->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $commande->fresh(),
+                'message' => 'Paiement rejeté et client notifié'
+            ]);
+        } catch (Exception $e) {
+            Log::error('Erreur lors du rejet du paiement: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du rejet du paiement',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }
