@@ -32,7 +32,7 @@ class UserSeeder extends Seeder
             'email' => 'admin@lelagali.bf',
             'phone' => '070000001',
             'email_verified_at' => now(),
-            'password' => Hash::make('password'),
+            'password' => Hash::make('Admin123!'),
             'role' => 'admin',
             'active' => true,
             'profile_image' => null,
